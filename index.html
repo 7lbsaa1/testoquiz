@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football Quiz | تسجيل الدخول</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Header / Navbar -->
+  <header class="navbar">
+    <a href="/login" class="brand">
+      <i class="fa-solid font-awesome fa-football brand-icon"></i>
+      <span>Football Quiz</span>
+    </a>
+    <button id="themeToggleBtn" class="theme-toggle">
+      <i class="fa-solid fa-moon"></i>
+      <span>الوضع الداكن</span>
+    </button>
+  </header>
+
+  <!-- Login Form Container -->
+  <main class="main-container">
+    <div class="form-wrapper glass-card">
+      <div class="header-text">
+        <h1>اختبار كرة القدم</h1>
+        <p>اختبر معلوماتك الكروية الشاملة واحصل على تقييمك المباشر</p>
+      </div>
+
+      <form id="loginForm" novalidate>
+        <!-- Profile Picture Picker -->
+        <div class="avatar-upload-wrapper">
+          <img id="avatarPreview" src="https://ui-avatars.com/api/?name=User&background=10b981&color=fff" alt="معاينة الصورة" class="avatar-preview">
+          <div class="upload-btn-wrapper">
+            <button type="button" class="btn-upload"><i class="fa-solid fa-camera"></i> اختر صورة شخصية</button>
+            <input type="file" id="photoInput" accept="image/jpeg, image/png, image/webp" required>
+          </div>
+          <small style="color: var(--text-muted); font-size: 0.8rem;">JPG, PNG, WEBP (يتم الضغط تلقائيًا)</small>
+        </div>
+
+        <!-- Name Input -->
+        <div class="form-group">
+          <label for="userName"><i class="fa-solid fa-user"></i> الاسم الكامل</label>
+          <input type="text" id="userName" class="form-control" placeholder="أدخل اسمك الكامل..." required>
+        </div>
+
+        <!-- Phone Input -->
+        <div class="form-group">
+          <label for="userPhone"><i class="fa-solid fa-phone"></i> رقم الهاتف</label>
+          <input type="tel" id="userPhone" class="form-control" placeholder="01xxxxxxxxx" required>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="startBtn" class="btn-primary">
+          <i class="fa-solid fa-play"></i> بدء الامتحان الآن
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- App Script -->
+  <script type="module">
+    import { db, ref, set, get, child, serverTimestamp } from "./firebase-config.js";
+
+    // Theme Toggle Logic
+    const themeBtn = document.getElementById('themeToggleBtn');
+    themeBtn.addEventListener('click', () => {
+      const currentTheme = document.documentElement.getAttribute('data-theme');
+      const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+      document.documentElement.setAttribute('data-theme', newTheme);
+      themeBtn.innerHTML = newTheme === 'light' 
+        ? '<i class="fa-solid fa-sun"></i> <span>الوضع الفاتح</span>' 
+        : '<i class="fa-solid fa-moon"></i> <span>الوضع الداكن</span>';
+    });
+
+    // Toast Utility
+    function showToast(message, type = 'error') {
+      const toastContainer = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> <span>${message}</span>`;
+      toastContainer.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    // Image Compression Helper
+    let compressedBase64Photo = "";
+    document.getElementById('photoInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+      if (!validTypes.includes(file.type)) {
+        showToast('يرجى اختيار صورة بصيغة JPG أو PNG أو WEBP فقط.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const maxDim = 300;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          compressedBase64Photo = canvas.toDataURL('image/jpeg', 0.7);
+          document.getElementById('avatarPreview').src = compressedBase64Photo;
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Check Auto Auto Redirect if already logged in
+    const activeUserId = localStorage.getItem('fq_user_id');
+    if (activeUserId) {
+      const dbRef = ref(db);
+      get(child(dbRef, `users/${activeUserId}`)).then((snapshot) => {
+        if (snapshot.exists()) {
+          window.location.href = "/quiz";
+        }
+      });
+    }
+
+    // Handle Login Form Submit
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('userName').value.trim();
+      const phone = document.getElementById('userPhone').value.trim();
+
+      if (!name || !phone) {
+        showToast('يرجى ملء كافة الحقول الإجبارية.');
+        return;
+      }
+
+      if (!compressedBase64Photo) {
+        showToast('يرجى اختيار صورة شخصية واضحة.');
+        return;
+      }
+
+      const submitBtn = document.getElementById('startBtn');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التسجيل...';
+
+      try {
+        const userId = 'usr_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+        const userRef = ref(db, `users/${userId}`);
+
+        const userData = {
+          userId: userId,
+          name: name,
+          phone: phone,
+          photo: compressedBase64Photo,
+          createdAt: serverTimestamp(),
+          isBlocked: false,
+          examStatus: 'in_progress', // 'in_progress', 'submitted'
+          startedAt: Date.now(),
+          score: 0,
+          resultPublished: false,
+          adminMessage: "",
+          answers: {
+            q1: "", q2: "", q3: "", q4: "", q5: "", q6: ""
+          },
+          grading: {
+            q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0
+          },
+          notes: {
+            q6: ""
+          }
+        };
+
+        await set(userRef, userData);
+
+        localStorage.setItem('fq_user_id', userId);
+        window.location.href = "/quiz";
+
+      } catch (err) {
+        console.error(err);
+        showToast('حدث خطأ أثناء الاتصال بالخادم. حاول مجددًا.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-play"></i> بدء الامتحان الآن';
+      }
+    });
+  </script>
+</body>
+</html>
