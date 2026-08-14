@@ -1,0 +1,29 @@
+{
+  "rules": {
+    "users": {
+      ".read": true,
+      "$uid": {
+        ".write": "auth != null || (!data.exists() && newData.exists()) || (data.child('examStatus').val() !== 'submitted' && newData.child('examStatus').val() === 'submitted')",
+        "isBlocked": {
+          ".write": "auth != null"
+        },
+        "score": {
+          ".write": "auth != null"
+        },
+        "resultPublished": {
+          ".write": "auth != null"
+        },
+        "grading": {
+          ".write": "auth != null"
+        },
+        "adminMessage": {
+          ".write": "auth != null"
+        }
+      }
+    },
+    "exams": {
+      ".read": true,
+      ".write": "auth != null"
+    }
+  }
+}
