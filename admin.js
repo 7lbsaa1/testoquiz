@@ -1,7 +1,6 @@
 // admin.js
 import { db, ref, onValue, update } from "./firebase-config.js";
 
-// خريطة المرجعية للوحة تحكم المسؤول لعرض الإجابة النموذجية
 const adminAnswersLookup = {
   q1: "فرناندو توريس",
   q2: "كولر",
@@ -23,15 +22,19 @@ const questionsList = [
 let allUsersCache = {};
 let activeInspectedUserId = null;
 
-// تبديل الثيم
-document.getElementById('themeToggleBtn').addEventListener('click', () => {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', newTheme);
-});
+// تبديل الثيم بشكل آمن
+const themeBtn = document.getElementById('themeToggleBtn');
+if (themeBtn) {
+  themeBtn.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', newTheme);
+  });
+}
 
 function showToast(message, type = 'success') {
   const toastContainer = document.getElementById('toastContainer');
+  if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type === 'error' ? 'error' : ''}`;
   toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> <span>${message}</span>`;
@@ -39,61 +42,86 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 4000);
 }
 
-// الاستماع للبيانات مباشرة
+// قراءة البيانات من Firebase
 onValue(ref(db, 'users'), (snapshot) => {
+  const tbody = document.getElementById('usersTableBody');
   if (!snapshot.exists()) {
-    document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="8" style="text-align: center;">لا يوجد مستخدمون حتى الآن.</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align: center;">لا يوجد مستخدمون حتى الآن في قاعدة البيانات.</td></tr>`;
     return;
   }
 
-  allUsersCache = snapshot.val();
+  allUsersCache = snapshot.val() || {};
   renderAdminDashboard();
+}, (error) => {
+  console.error("Firebase Read Error:", error);
+  showToast("فشل جلب البيانات من Firebase. تأكد من قواعد الأمان (Rules).", "error");
 });
 
 function renderAdminDashboard() {
   const usersArray = Object.values(allUsersCache);
-  const searchKeyword = document.getElementById('adminSearchInput').value.toLowerCase().trim();
+  const searchInput = document.getElementById('adminSearchInput');
+  const searchKeyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-  document.getElementById('statTotalUsers').textContent = usersArray.length;
-  document.getElementById('statStarted').textContent = usersArray.filter(u => u.examStatus === 'in_progress' || u.examStatus === 'submitted').length;
-  document.getElementById('statSubmitted').textContent = usersArray.filter(u => u.examStatus === 'submitted').length;
-  document.getElementById('statBlocked').textContent = usersArray.filter(u => u.isBlocked).length;
-  document.getElementById('statReviewed').textContent = usersArray.filter(u => u.resultPublished).length;
+  // تحديث الإحصائيات مع الحماية من غياب العناصر
+  const elTotal = document.getElementById('statTotalUsers');
+  const elStarted = document.getElementById('statStarted');
+  const elSubmitted = document.getElementById('statSubmitted');
+  const elBlocked = document.getElementById('statBlocked');
+  const elReviewed = document.getElementById('statReviewed');
 
-  const filtered = usersArray.filter(u => 
-    u.name.toLowerCase().includes(searchKeyword) || 
-    u.phone.includes(searchKeyword)
-  );
+  if (elTotal) elTotal.textContent = usersArray.length;
+  if (elStarted) elStarted.textContent = usersArray.filter(u => u?.examStatus === 'in_progress' || u?.examStatus === 'submitted').length;
+  if (elSubmitted) elSubmitted.textContent = usersArray.filter(u => u?.examStatus === 'submitted').length;
+  if (elBlocked) elBlocked.textContent = usersArray.filter(u => u?.isBlocked).length;
+  if (elReviewed) elReviewed.textContent = usersArray.filter(u => u?.resultPublished).length;
+
+  // تصفية المستخدمين بأمان لتجنب أخطاء undefined
+  const filtered = usersArray.filter(u => {
+    const userName = (u?.name || '').toLowerCase();
+    const userPhone = (u?.phone || '').toString();
+    return userName.includes(searchKeyword) || userPhone.includes(searchKeyword);
+  });
 
   const tbody = document.getElementById('usersTableBody');
+  if (!tbody) return;
   tbody.innerHTML = '';
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center;">لا توجد نتائج تطابق البحث.</td></tr>`;
+    return;
+  }
 
   filtered.forEach(user => {
     const tr = document.createElement('tr');
 
-    const statusBadge = user.examStatus === 'submitted' 
+    const statusBadge = user?.examStatus === 'submitted' 
       ? '<span class="badge badge-success">تم التسليم</span>' 
       : '<span class="badge badge-warning">قيد الإجراء</span>';
 
-    const publishBadge = user.resultPublished 
+    const publishBadge = user?.resultPublished 
       ? '<span class="badge badge-success">منشورة</span>' 
       : '<span class="badge badge-danger">غير منشورة</span>';
 
-    const formattedDate = user.startedAt ? new Date(user.startedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) : '-';
+    const formattedDate = user?.startedAt 
+      ? new Date(user.startedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) 
+      : '-';
+
+    const photoUrl = user?.photo || 'https://via.placeholder.com/40';
+    const uId = user?.userId || '';
 
     tr.innerHTML = `
-      <td><img src="${user.photo}" class="table-avatar" alt="الصورة"></td>
-      <td><strong>${user.name}</strong></td>
-      <td>${user.phone}</td>
+      <td><img src="${photoUrl}" class="table-avatar" alt="الصورة"></td>
+      <td><strong>${user?.name || 'بدون اسم'}</strong></td>
+      <td>${user?.phone || '-'}</td>
       <td>${formattedDate}</td>
       <td>${statusBadge}</td>
-      <td><strong style="color: var(--primary);">${user.score || 0} / 12</strong></td>
+      <td><strong style="color: var(--primary);">${user?.score || 0} / 12</strong></td>
       <td>${publishBadge}</td>
       <td>
         <div class="action-btns">
-          <button class="btn-primary btn-sm inspect-btn" data-id="${user.userId}"><i class="fa-solid fa-folder-open"></i> فتح الامتحان</button>
-          <button class="${user.isBlocked ? 'btn-secondary' : 'btn-primary'} btn-sm block-btn" data-id="${user.userId}" style="${user.isBlocked ? '' : 'background: var(--danger);'}">
-            ${user.isBlocked ? 'إلغاء الحظر' : 'حظر'}
+          <button class="btn-primary btn-sm inspect-btn" data-id="${uId}"><i class="fa-solid fa-folder-open"></i> فتح الامتحان</button>
+          <button class="${user?.isBlocked ? 'btn-secondary' : 'btn-primary'} btn-sm block-btn" data-id="${uId}" style="${user?.isBlocked ? '' : 'background: var(--danger);'}">
+            ${user?.isBlocked ? 'إلغاء الحظر' : 'حظر'}
           </button>
         </div>
       </td>
@@ -110,9 +138,13 @@ function renderAdminDashboard() {
   });
 }
 
-document.getElementById('adminSearchInput').addEventListener('input', renderAdminDashboard);
+const searchInputEl = document.getElementById('adminSearchInput');
+if (searchInputEl) {
+  searchInputEl.addEventListener('input', renderAdminDashboard);
+}
 
 async function toggleBlockUser(userId) {
+  if (!userId) return;
   const user = allUsersCache[userId];
   if (!user) return;
 
@@ -122,17 +154,23 @@ async function toggleBlockUser(userId) {
 }
 
 const gradingModal = document.getElementById('gradingModal');
-document.getElementById('closeGradingModalBtn').onclick = () => gradingModal.classList.remove('active');
+const closeModalBtn = document.getElementById('closeGradingModalBtn');
+if (closeModalBtn && gradingModal) {
+  closeModalBtn.onclick = () => gradingModal.classList.remove('active');
+}
 
 function openGradingModal(userId) {
   activeInspectedUserId = userId;
   const user = allUsersCache[userId];
-  if (!user) return;
+  if (!user || !gradingModal) return;
 
-  document.getElementById('modalUserNameTitle').textContent = `مراجعة امتحان: ${user.name} (${user.phone})`;
-  document.getElementById('adminMessageInput').value = user.adminMessage || "";
+  const nameTitle = document.getElementById('modalUserNameTitle');
+  const msgInput = document.getElementById('adminMessageInput');
+  if (nameTitle) nameTitle.textContent = `مراجعة امتحان: ${user.name || ''} (${user.phone || ''})`;
+  if (msgInput) msgInput.value = user.adminMessage || "";
 
   const container = document.getElementById('modalExamContent');
+  if (!container) return;
   container.innerHTML = '';
 
   questionsList.forEach((q, idx) => {
@@ -179,41 +217,51 @@ function openGradingModal(userId) {
   gradingModal.classList.add('active');
 }
 
-// حفظ التصحيح والملاحظات
-document.getElementById('saveGradingBtn').onclick = async () => {
-  if (!activeInspectedUserId) return;
+// حفظ التصحيح
+const saveBtn = document.getElementById('saveGradingBtn');
+if (saveBtn) {
+  saveBtn.onclick = async () => {
+    if (!activeInspectedUserId) return;
 
-  const user = allUsersCache[activeInspectedUserId];
-  const q6Score = parseInt(document.getElementById('q6ScoreInput').value) || 0;
-  const q6Note = document.getElementById('q6NoteInput').value.trim();
-  const adminMsg = document.getElementById('adminMessageInput').value.trim();
+    const user = allUsersCache[activeInspectedUserId];
+    const scoreInput = document.getElementById('q6ScoreInput');
+    const noteInput = document.getElementById('q6NoteInput');
+    const msgInput = document.getElementById('adminMessageInput');
 
-  let currentGrading = user.grading || { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0 };
-  currentGrading.q6 = q6Score;
+    const q6Score = scoreInput ? parseInt(scoreInput.value) || 0 : 0;
+    const q6Note = noteInput ? noteInput.value.trim() : '';
+    const adminMsg = msgInput ? msgInput.value.trim() : '';
 
-  let totalScore = 0;
-  Object.values(currentGrading).forEach(s => totalScore += Number(s));
+    let currentGrading = user.grading || { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0 };
+    currentGrading.q6 = q6Score;
 
-  const updates = {
-    "grading/q6": q6Score,
-    "notes/q6": q6Note,
-    "score": totalScore,
-    "adminMessage": adminMsg
+    let totalScore = 0;
+    Object.values(currentGrading).forEach(s => totalScore += Number(s));
+
+    const updates = {
+      "grading/q6": q6Score,
+      "notes/q6": q6Note,
+      "score": totalScore,
+      "adminMessage": adminMsg
+    };
+
+    await update(ref(db, `users/${activeInspectedUserId}`), updates);
+    showToast('تم حفظ التصحيح بنجاح.');
+    if (gradingModal) gradingModal.classList.remove('active');
   };
+}
 
-  await update(ref(db, `users/${activeInspectedUserId}`), updates);
-  showToast('تم حفظ التصحيح بنجاح.');
-  gradingModal.classList.remove('active');
-};
+// إظهار/إخفاء النتيجة
+const publishBtn = document.getElementById('togglePublishResultBtn');
+if (publishBtn) {
+  publishBtn.onclick = async () => {
+    if (!activeInspectedUserId) return;
 
-// إظهار أو إخفاء النتيجة للمستخدم
-document.getElementById('togglePublishResultBtn').onclick = async () => {
-  if (!activeInspectedUserId) return;
+    const user = allUsersCache[activeInspectedUserId];
+    const newPublishStatus = !user.resultPublished;
 
-  const user = allUsersCache[activeInspectedUserId];
-  const newPublishStatus = !user.resultPublished;
-
-  await update(ref(db, `users/${activeInspectedUserId}`), { resultPublished: newPublishStatus });
-  showToast(`تم ${newPublishStatus ? 'إظهار' : 'إخفاء'} النتيجة بنجاح.`);
-  gradingModal.classList.remove('active');
-};
+    await update(ref(db, `users/${activeInspectedUserId}`), { resultPublished: newPublishStatus });
+    showToast(`تم ${newPublishStatus ? 'إظهار' : 'إخفاء'} النتيجة بنجاح.`);
+    if (gradingModal) gradingModal.classList.remove('active');
+  };
+}
