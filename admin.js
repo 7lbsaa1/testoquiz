@@ -1,14 +1,14 @@
 // admin.js
 import { db, ref, onValue, update } from "./firebase-config.js";
 
-// Answer Key Reference for Grading Modal
-const correctAnswersMap = {
+// خريطة المرجعية للوحة تحكم المسؤول لعرض الإجابة النموذجية
+const adminAnswersLookup = {
   q1: "فرناندو توريس",
   q2: "كولر",
   q3: "بايرن ميونخ",
   q4: "5",
   q5: "2003",
-  q6: "لاعب كرة قدم (فرناندو توريس / ديفيد فيا / إنييستا) - خاض تجارب متعددة"
+  q6: "لاعب كرة قدم (فرناندو توريس / ديفيد فيا) - خاض تجارب متعددة"
 };
 
 const questionsList = [
@@ -23,7 +23,7 @@ const questionsList = [
 let allUsersCache = {};
 let activeInspectedUserId = null;
 
-// Theme Switcher
+// تبديل الثيم
 document.getElementById('themeToggleBtn').addEventListener('click', () => {
   const currentTheme = document.documentElement.getAttribute('data-theme');
   const newTheme = currentTheme === 'light' ? 'dark' : 'light';
@@ -39,7 +39,7 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 4000);
 }
 
-// Live Database Listener for Admin Dashboard
+// الاستماع للبيانات مباشرة
 onValue(ref(db, 'users'), (snapshot) => {
   if (!snapshot.exists()) {
     document.getElementById('usersTableBody').innerHTML = `<tr><td colspan="8" style="text-align: center;">لا يوجد مستخدمون حتى الآن.</td></tr>`;
@@ -54,14 +54,12 @@ function renderAdminDashboard() {
   const usersArray = Object.values(allUsersCache);
   const searchKeyword = document.getElementById('adminSearchInput').value.toLowerCase().trim();
 
-  // Update Counters
   document.getElementById('statTotalUsers').textContent = usersArray.length;
   document.getElementById('statStarted').textContent = usersArray.filter(u => u.examStatus === 'in_progress' || u.examStatus === 'submitted').length;
   document.getElementById('statSubmitted').textContent = usersArray.filter(u => u.examStatus === 'submitted').length;
   document.getElementById('statBlocked').textContent = usersArray.filter(u => u.isBlocked).length;
   document.getElementById('statReviewed').textContent = usersArray.filter(u => u.resultPublished).length;
 
-  // Filter Table
   const filtered = usersArray.filter(u => 
     u.name.toLowerCase().includes(searchKeyword) || 
     u.phone.includes(searchKeyword)
@@ -103,7 +101,6 @@ function renderAdminDashboard() {
     tbody.appendChild(tr);
   });
 
-  // Attach Event Handlers
   document.querySelectorAll('.inspect-btn').forEach(btn => {
     btn.onclick = () => openGradingModal(btn.getAttribute('data-id'));
   });
@@ -115,7 +112,6 @@ function renderAdminDashboard() {
 
 document.getElementById('adminSearchInput').addEventListener('input', renderAdminDashboard);
 
-// Block/Unblock Logic
 async function toggleBlockUser(userId) {
   const user = allUsersCache[userId];
   if (!user) return;
@@ -125,7 +121,6 @@ async function toggleBlockUser(userId) {
   showToast(`تم ${updatedBlockStatus ? 'حظر' : 'إلغاء حظر'} المستخدم بنجاح.`);
 }
 
-// Grading Modal Window
 const gradingModal = document.getElementById('gradingModal');
 document.getElementById('closeGradingModalBtn').onclick = () => gradingModal.classList.remove('active');
 
@@ -155,17 +150,16 @@ function openGradingModal(userId) {
         <strong>س${idx + 1}: ${q.text}</strong>
         ${q.img ? `<br><img src="${q.img}" style="max-height: 100px; border-radius: 8px; margin: 0.5rem 0;">` : ''}
         <p>إجابة العميل: <span style="font-weight: 700; color: ${isCorrect ? '#34d399' : '#f87171'};">${userAns}</span></p>
-        <p>الإجابة الصحيحة: <span style="font-weight: 700; color: #34d399;">${correctAnswersMap[q.id]}</span></p>
-        <small>الدرجة المستحقة: ${qScore} / 2</small>
+        <p>الإجابة الصحيحة النموذجية: <span style="font-weight: 700; color: #34d399;">${adminAnswersLookup[q.id]}</span></p>
+        <small>الدرجة: ${qScore} / 2</small>
       `;
     } else {
-      // Manual Essay Question Q6
       const currentNote = user.notes && user.notes.q6 ? user.notes.q6 : "";
       div.innerHTML = `
         <strong style="color: var(--accent);">س${idx + 1} (مقالي): ${q.text}</strong>
         ${q.img ? `<br><img src="${q.img}" style="max-height: 120px; border-radius: 8px; margin: 0.5rem 0;">` : ''}
         <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0;">
-          <strong>إجابة العميل النصية:</strong>
+          <strong>إجابة العميل:</strong>
           <p style="white-space: pre-wrap; color: var(--text-main); font-weight: 600;">${userAns}</p>
         </div>
         <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.75rem;">
@@ -173,7 +167,7 @@ function openGradingModal(userId) {
           <input type="number" id="q6ScoreInput" class="form-control" style="width: 80px;" min="0" max="2" value="${qScore}">
         </div>
         <div style="margin-top: 0.5rem;">
-          <label>ملاحظة المصحح على الإجابة:</label>
+          <label>ملاحظة المصحح:</label>
           <input type="text" id="q6NoteInput" class="form-control" placeholder="ملاحظة حول الإجابة..." value="${currentNote}">
         </div>
       `;
@@ -185,7 +179,7 @@ function openGradingModal(userId) {
   gradingModal.classList.add('active');
 }
 
-// Save Manual Grading Action
+// حفظ التصحيح والملاحظات
 document.getElementById('saveGradingBtn').onclick = async () => {
   if (!activeInspectedUserId) return;
 
@@ -194,7 +188,6 @@ document.getElementById('saveGradingBtn').onclick = async () => {
   const q6Note = document.getElementById('q6NoteInput').value.trim();
   const adminMsg = document.getElementById('adminMessageInput').value.trim();
 
-  // Recalculate total score
   let currentGrading = user.grading || { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0 };
   currentGrading.q6 = q6Score;
 
@@ -209,11 +202,11 @@ document.getElementById('saveGradingBtn').onclick = async () => {
   };
 
   await update(ref(db, `users/${activeInspectedUserId}`), updates);
-  showToast('تم حفظ التصحيح والنتيجة بنجاح.');
+  showToast('تم حفظ التصحيح بنجاح.');
   gradingModal.classList.remove('active');
 };
 
-// Toggle Result Publication State
+// إظهار أو إخفاء النتيجة للمستخدم
 document.getElementById('togglePublishResultBtn').onclick = async () => {
   if (!activeInspectedUserId) return;
 
@@ -221,6 +214,6 @@ document.getElementById('togglePublishResultBtn').onclick = async () => {
   const newPublishStatus = !user.resultPublished;
 
   await update(ref(db, `users/${activeInspectedUserId}`), { resultPublished: newPublishStatus });
-  showToast(`تم ${newPublishStatus ? 'إظهار ونشر' : 'إخفاء'} النتيجة للعميل.`);
+  showToast(`تم ${newPublishStatus ? 'إظهار' : 'إخفاء'} النتيجة بنجاح.`);
   gradingModal.classList.remove('active');
 };
