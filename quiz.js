@@ -1,7 +1,7 @@
 // quiz.js
 import { db, ref, get, update, child, onValue } from "./firebase-config.js";
 
-// دالة التشفير المخصصة - تحول أي نص خيار إلى رمز مبهم (Cipher Hash)
+// دالة التشفير المخصصة لخيارات الإجابة
 function encryptOption(text) {
   if (!text) return "";
   const key = "FOOTBALL_QUIZ_SECRET_KEY_2026";
@@ -10,10 +10,8 @@ function encryptOption(text) {
     hash = ((hash << 5) - hash) + text.charCodeAt(i) + key.charCodeAt(i % key.length);
     hash |= 0;
   }
-  // تحويل الناتج لنظام 36 مع معالجة السوالب للحصول على أكواد مثل xK82Lm91 و dsmkdfk
   const rawCode = Math.abs(hash).toString(36);
   
-  // خريطة تحويل دقيقة للقيم المستهدفة
   const customMap = {
     "فرناندو توريس": "xK82Lm91",
     "كولر": "dsmkdfk",
@@ -25,7 +23,7 @@ function encryptOption(text) {
   return customMap[text] || (rawCode + "xK").substring(0, 8);
 }
 
-// مصفوفة الأسئلة بدون أي إجابة صريحة - فقط الرموز المشفرة (Encrypted Hashes)
+// مصفوفة الأسئلة برموز الإجابات المشفرة
 const questionsData = [
   {
     id: 'q1',
@@ -33,7 +31,7 @@ const questionsData = [
     image: 'https://i.pinimg.com/736x/21/75/94/217594dd06dcd7d74f8439a7f799a04b.jpg',
     question: 'من هو هذا اللاعب؟',
     options: ['ستيفن جيرارد', 'فرناندو توريس', 'ديفيد فيا', 'تشافي هيرنانديز'],
-    encryptedHash: 'xK82Lm91' // الإجابة المشفرة
+    encryptedHash: 'xK82Lm91'
   },
   {
     id: 'q2',
@@ -41,7 +39,7 @@ const questionsData = [
     image: 'https://i.pinimg.com/736x/1f/ce/d0/1fced0e99995f28dfe40414031a6bca0.jpg',
     question: 'من هو هذا اللاعب؟',
     options: ['كولر', 'روبين فان بيرسي', 'باتريك كلوفيرت', 'رود فان نيستلروي'],
-    encryptedHash: 'dsmkdfk' // الإجابة المشفرة
+    encryptedHash: 'dsmkdfk'
   },
   {
     id: 'q3',
@@ -49,7 +47,7 @@ const questionsData = [
     image: null,
     question: 'من فاز بدوري أبطال أوروبا عام 2020؟',
     options: ['باريس سان جيرمان', 'ريال مدريد', 'بايرن ميونخ', 'مانشستر سيتي'],
-    encryptedHash: '231521' // الإجابة المشفرة
+    encryptedHash: '231521'
   },
   {
     id: 'q4',
@@ -57,7 +55,7 @@ const questionsData = [
     image: 'https://i.pinimg.com/736x/4f/07/94/4f079491ea9e6a7411210d79299ec283.jpg',
     question: 'كم ناديًا لعب له كريستيانو رونالدو؟',
     options: ['4', '5', '6', '3'],
-    encryptedHash: '74555' // الإجابة المشفرة
+    encryptedHash: '74555'
   },
   {
     id: 'q5',
@@ -65,7 +63,7 @@ const questionsData = [
     image: 'https://i.pinimg.com/736x/26/36/5f/26365fa3abdafd83a278560dd4751101.jpg',
     question: 'متى فاز هذا اللاعب بالكرة الذهبية؟',
     options: ['2001', '2002', '2003', '2004'],
-    encryptedHash: '99aK12' // الإجابة المشفرة
+    encryptedHash: '99aK12'
   },
   {
     id: 'q6',
@@ -77,13 +75,13 @@ const questionsData = [
   }
 ];
 
-// حالة التطبيق العامة
+// حالة التطبيق
 let currentUserId = localStorage.getItem('fq_user_id');
 let currentUserData = null;
 let currentQuestionIndex = 0;
 let userAnswers = { q1: "", q2: "", q3: "", q4: "", q5: "", q6: "" };
 let timerInterval = null;
-const TOTAL_DURATION_SECONDS = 25 * 60; // 1500 ثانية (25 دقيقة)
+const TOTAL_DURATION_SECONDS = 25 * 60;
 
 // عناصر الواجهة
 const loadingScreen = document.getElementById('loadingScreen');
@@ -93,17 +91,19 @@ const resultContainer = document.getElementById('resultContainer');
 const themeBtn = document.getElementById('themeToggleBtn');
 const toastContainer = document.getElementById('toastContainer');
 
-// تبديل الوضع الداكن/الفاتح
-themeBtn.addEventListener('click', () => {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-  document.documentElement.setAttribute('data-theme', newTheme);
-  themeBtn.innerHTML = newTheme === 'light' 
-    ? '<i class="fa-solid fa-sun"></i> <span>الوضع الفاتح</span>' 
-    : '<i class="fa-solid fa-moon"></i> <span>الوضع الداكن</span>';
-});
+if (themeBtn) {
+  themeBtn.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    themeBtn.innerHTML = newTheme === 'light' 
+      ? '<i class="fa-solid fa-sun"></i> <span>الوضع الفاتح</span>' 
+      : '<i class="fa-solid fa-moon"></i> <span>الوضع الداكن</span>';
+  });
+}
 
 function showToast(message, type = 'error') {
+  if (!toastContainer) return;
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i> <span>${message}</span>`;
@@ -111,7 +111,6 @@ function showToast(message, type = 'error') {
   setTimeout(() => toast.remove(), 4000);
 }
 
-// التثبت من هوية المستخدم
 if (!currentUserId) {
   window.location.href = "/login";
 } else {
@@ -122,7 +121,7 @@ function initQuizApp() {
   const userRef = ref(db, `users/${currentUserId}`);
   
   onValue(userRef, (snapshot) => {
-    loadingScreen.style.display = 'none';
+    if (loadingScreen) loadingScreen.style.display = 'none';
     if (!snapshot.exists()) {
       localStorage.removeItem('fq_user_id');
       window.location.href = "/login";
@@ -131,41 +130,43 @@ function initQuizApp() {
 
     currentUserData = snapshot.val();
 
-    // التحقق من الحظر
     if (currentUserData.isBlocked) {
-      examContainer.style.display = 'none';
-      resultContainer.style.display = 'none';
-      blockedScreen.style.display = 'block';
+      if (examContainer) examContainer.style.display = 'none';
+      if (resultContainer) resultContainer.style.display = 'none';
+      if (blockedScreen) blockedScreen.style.display = 'block';
       if (timerInterval) clearInterval(timerInterval);
       return;
     } else {
-      blockedScreen.style.display = 'none';
+      if (blockedScreen) blockedScreen.style.display = 'none';
     }
 
-    // عرض بيانات المستخدم في الشريط العلوي
-    document.getElementById('navUserBadge').style.display = 'flex';
-    document.getElementById('navUserPhoto').src = currentUserData.photo;
-    document.getElementById('navUserName').textContent = currentUserData.name;
-    document.getElementById('navUserPhone').textContent = currentUserData.phone;
+    const badge = document.getElementById('navUserBadge');
+    const photo = document.getElementById('navUserPhoto');
+    const name = document.getElementById('navUserName');
+    const phone = document.getElementById('navUserPhone');
+
+    if (badge) badge.style.display = 'flex';
+    if (photo) photo.src = currentUserData.photo || 'https://via.placeholder.com/40';
+    if (name) name.textContent = currentUserData.name || '';
+    if (phone) phone.textContent = currentUserData.phone || '';
 
     if (currentUserData.answers) {
       userAnswers = { ...currentUserData.answers };
     }
 
     if (currentUserData.examStatus === 'submitted') {
-      examContainer.style.display = 'none';
-      resultContainer.style.display = 'block';
+      if (examContainer) examContainer.style.display = 'none';
+      if (resultContainer) resultContainer.style.display = 'block';
       renderResultScreen();
     } else {
-      resultContainer.style.display = 'none';
-      examContainer.style.display = 'block';
+      if (resultContainer) resultContainer.style.display = 'none';
+      if (examContainer) examContainer.style.display = 'block';
       setupTimer();
       renderQuestion();
     }
   });
 }
 
-// عداد الوقت لمنع التلاعب
 function setupTimer() {
   if (timerInterval) clearInterval(timerInterval);
   const startedAt = currentUserData.startedAt || Date.now();
@@ -174,16 +175,19 @@ function setupTimer() {
     const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
     const remainingSeconds = TOTAL_DURATION_SECONDS - elapsedSeconds;
 
+    const timerDisplay = document.getElementById('timerDisplay');
+
     if (remainingSeconds <= 0) {
       clearInterval(timerInterval);
-      document.getElementById('timerDisplay').textContent = "00:00";
+      if (timerDisplay) timerDisplay.textContent = "00:00";
       showToast('انتهى وقت الامتحان! يتم التسليم تلقائيًا...', 'error');
       executeFinalSubmission();
     } else {
       const minutes = Math.floor(remainingSeconds / 60);
       const seconds = remainingSeconds % 60;
-      document.getElementById('timerDisplay').textContent = 
-        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      if (timerDisplay) {
+        timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
     }
   }
 
@@ -191,74 +195,87 @@ function setupTimer() {
   timerInterval = setInterval(updateTimer, 1000);
 }
 
-// عرض السؤال الحالي
 function renderQuestion() {
   const q = questionsData[currentQuestionIndex];
 
-  document.getElementById('questionCounter').textContent = `السؤال ${currentQuestionIndex + 1} من 6`;
-  document.getElementById('progressBarFill').style.width = `${((currentQuestionIndex + 1) / 6) * 100}%`;
+  const qCounter = document.getElementById('questionCounter');
+  const pBar = document.getElementById('progressBarFill');
+  if (qCounter) qCounter.textContent = `السؤال ${currentQuestionIndex + 1} من 6`;
+  if (pBar) pBar.style.width = `${((currentQuestionIndex + 1) / 6) * 100}%`;
 
   const imgWrapper = document.getElementById('questionImgWrapper');
-  if (q.image) {
+  const qImg = document.getElementById('questionImg');
+  if (q.image && imgWrapper && qImg) {
     imgWrapper.style.display = 'block';
-    document.getElementById('questionImg').src = q.image;
-  } else {
+    qImg.src = q.image;
+  } else if (imgWrapper) {
     imgWrapper.style.display = 'none';
   }
 
-  document.getElementById('questionText').textContent = q.question;
+  const qText = document.getElementById('questionText');
+  if (qText) qText.textContent = q.question;
 
   const optionsGrid = document.getElementById('optionsGrid');
   const essayContainer = document.getElementById('essayContainer');
 
   if (q.type === 'mcq') {
-    essayContainer.style.display = 'none';
-    optionsGrid.style.display = 'grid';
-    optionsGrid.innerHTML = '';
+    if (essayContainer) essayContainer.style.display = 'none';
+    if (optionsGrid) {
+      optionsGrid.style.display = 'grid';
+      optionsGrid.innerHTML = '';
 
-    q.options.forEach(opt => {
-      const btn = document.createElement('button');
-      btn.className = `option-btn ${userAnswers[q.id] === opt ? 'selected' : ''}`;
-      btn.textContent = opt;
-      btn.onclick = () => {
-        userAnswers[q.id] = opt;
-        saveDraftAnswer();
-        renderQuestion();
-      };
-      optionsGrid.appendChild(btn);
-    });
+      q.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = `option-btn ${userAnswers[q.id] === opt ? 'selected' : ''}`;
+        btn.textContent = opt;
+        btn.onclick = () => {
+          userAnswers[q.id] = opt;
+          saveDraftAnswer();
+          renderQuestion();
+        };
+        optionsGrid.appendChild(btn);
+      });
+    }
   } else {
-    optionsGrid.style.display = 'none';
-    essayContainer.style.display = 'block';
-    const textarea = document.getElementById('essayAnswer');
-    textarea.value = userAnswers[q.id] || "";
-    textarea.oninput = (e) => {
-      userAnswers[q.id] = e.target.value;
-      saveDraftAnswer();
-    };
+    if (optionsGrid) optionsGrid.style.display = 'none';
+    if (essayContainer) {
+      essayContainer.style.display = 'block';
+      const textarea = document.getElementById('essayAnswer');
+      if (textarea) {
+        textarea.value = userAnswers[q.id] || "";
+        textarea.oninput = (e) => {
+          userAnswers[q.id] = e.target.value;
+          saveDraftAnswer();
+        };
+      }
+    }
   }
 
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
 
-  prevBtn.disabled = currentQuestionIndex === 0;
+  if (prevBtn) prevBtn.disabled = currentQuestionIndex === 0;
 
-  if (currentQuestionIndex === questionsData.length - 1) {
-    nextBtn.className = 'btn-primary';
-    nextBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> تسليم الامتحان';
-    nextBtn.onclick = triggerSubmitConfirmation;
-  } else {
-    nextBtn.className = 'btn-primary';
-    nextBtn.innerHTML = 'التالي <i class="fa-solid fa-arrow-left"></i>';
-    nextBtn.onclick = goToNextQuestion;
+  if (nextBtn) {
+    if (currentQuestionIndex === questionsData.length - 1) {
+      nextBtn.className = 'btn-primary';
+      nextBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> تسليم الامتحان';
+      nextBtn.onclick = triggerSubmitConfirmation;
+    } else {
+      nextBtn.className = 'btn-primary';
+      nextBtn.innerHTML = 'التالي <i class="fa-solid fa-arrow-left"></i>';
+      nextBtn.onclick = goToNextQuestion;
+    }
   }
 
-  prevBtn.onclick = () => {
-    if (currentQuestionIndex > 0) {
-      currentQuestionIndex--;
-      renderQuestion();
-    }
-  };
+  if (prevBtn) {
+    prevBtn.onclick = () => {
+      if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        renderQuestion();
+      }
+    };
+  }
 }
 
 function saveDraftAnswer() {
@@ -278,13 +295,17 @@ function goToNextQuestion() {
   }
 }
 
-// تأكيد التسليم
 const confirmModal = document.getElementById('confirmModal');
-document.getElementById('cancelSubmitBtn').onclick = () => confirmModal.classList.remove('active');
-document.getElementById('confirmSubmitBtn').onclick = () => {
-  confirmModal.classList.remove('active');
-  executeFinalSubmission();
-};
+const cancelBtn = document.getElementById('cancelSubmitBtn');
+const confirmBtn = document.getElementById('confirmSubmitBtn');
+
+if (cancelBtn && confirmModal) cancelBtn.onclick = () => confirmModal.classList.remove('active');
+if (confirmBtn && confirmModal) {
+  confirmBtn.onclick = () => {
+    confirmModal.classList.remove('active');
+    executeFinalSubmission();
+  };
+}
 
 function triggerSubmitConfirmation() {
   const q = questionsData[currentQuestionIndex];
@@ -292,22 +313,19 @@ function triggerSubmitConfirmation() {
     showToast('يرجى الإجابة على السؤال الحالي قبل التسليم.');
     return;
   }
-  confirmModal.classList.add('active');
+  if (confirmModal) confirmModal.classList.add('active');
 }
 
-// تنفيذ التصحيح والتسليم بفك التشفير وقت التصحيح
 async function executeFinalSubmission() {
   if (timerInterval) clearInterval(timerInterval);
 
   let calculatedScore = 0;
   let gradingMap = { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0 };
 
-  // تصحيح الأسئلة الاختيارية عبر التشفير المشترك
   for (let i = 0; i < 5; i++) {
     const q = questionsData[i];
     const userChoice = userAnswers[q.id] || "";
     
-    // تشفير إجابة المستخدم ومقارنتها بالكود المشفر
     const hashedUserChoice = encryptOption(userChoice);
     if (hashedUserChoice === q.encryptedHash) {
       calculatedScore += 2;
@@ -332,29 +350,32 @@ async function executeFinalSubmission() {
   }
 }
 
-// عرض النتيجة النهائية للمستخدم
 function renderResultScreen() {
   const pendingBox = document.getElementById('pendingReviewBox');
   const publishedBox = document.getElementById('publishedResultBox');
 
   if (!currentUserData.resultPublished) {
-    pendingBox.style.display = 'block';
-    publishedBox.style.display = 'none';
+    if (pendingBox) pendingBox.style.display = 'block';
+    if (publishedBox) publishedBox.style.display = 'none';
   } else {
-    pendingBox.style.display = 'none';
-    publishedBox.style.display = 'block';
+    if (pendingBox) pendingBox.style.display = 'none';
+    if (publishedBox) publishedBox.style.display = 'block';
 
-    document.getElementById('finalScoreText').textContent = `${currentUserData.score} / 12`;
+    const finalScore = document.getElementById('finalScoreText');
+    if (finalScore) finalScore.textContent = `${currentUserData.score} / 12`;
 
     const msgBanner = document.getElementById('adminMessageBanner');
-    if (currentUserData.adminMessage) {
-      msgBanner.style.display = 'block';
-      msgBanner.textContent = `ملاحظات الإدارة: ${currentUserData.adminMessage}`;
-    } else {
-      msgBanner.style.display = 'none';
+    if (msgBanner) {
+      if (currentUserData.adminMessage) {
+        msgBanner.style.display = 'block';
+        msgBanner.textContent = `ملاحظات الإدارة: ${currentUserData.adminMessage}`;
+      } else {
+        msgBanner.style.display = 'none';
+      }
     }
 
     const listContainer = document.getElementById('questionsReviewList');
+    if (!listContainer) return;
     listContainer.innerHTML = '';
 
     questionsData.forEach((q, idx) => {
