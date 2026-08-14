@@ -75,7 +75,7 @@ function renderAdminDashboard() {
   if (elBlocked) elBlocked.textContent = usersArray.filter(u => u?.isBlocked).length;
   if (elReviewed) elReviewed.textContent = usersArray.filter(u => u?.resultPublished).length;
 
-  // تصفية المستخدمين بأمان لتجنب أخطاء undefined
+  // تصفية المستخدمين
   const filtered = usersArray.filter(u => {
     const userName = (u?.name || '').toLowerCase();
     const userPhone = (u?.phone || '').toString();
@@ -109,10 +109,43 @@ function renderAdminDashboard() {
     const photoUrl = user?.photo || 'https://via.placeholder.com/40';
     const uId = user?.userId || '';
 
+    // --- تجهيز رابط الواتساب الديناميكي ---
+    const rawPhone = (user?.phone || '').toString().trim();
+    let cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+
+    // إضافة كود مصر (20) تلقائياً إذا كان الرقم مصري يبدأ بـ 01
+    if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+      cleanPhone = '20' + cleanPhone.substring(1);
+    }
+
+    const defaultMsg = encodeURIComponent("اهلا نتيجتك ظهرت في الموقع الان");
+    const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${defaultMsg}` : '#';
+
     tr.innerHTML = `
       <td><img src="${photoUrl}" class="table-avatar" alt="الصورة"></td>
       <td><strong>${user?.name || 'بدون اسم'}</strong></td>
-      <td>${user?.phone || '-'}</td>
+      <td>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span>${rawPhone || '-'}</span>
+          ${cleanPhone ? `
+            <a href="${waLink}" target="_blank" title="إرسال النتيجة عبر واتساب" style="
+              color: #25D366; 
+              background: rgba(37, 211, 102, 0.15); 
+              padding: 4px 8px; 
+              border-radius: 6px; 
+              text-decoration: none; 
+              font-size: 0.85rem; 
+              display: inline-flex; 
+              align-items: center; 
+              gap: 4px;
+              font-weight: 600;
+              transition: all 0.2s ease;
+            ">
+              <i class="fa-brands fa-whatsapp" style="font-size: 1rem;"></i> واتساب
+            </a>
+          ` : ''}
+        </div>
+      </td>
       <td>${formattedDate}</td>
       <td>${statusBadge}</td>
       <td><strong style="color: var(--primary);">${user?.score || 0} / 12</strong></td>
@@ -166,7 +199,25 @@ function openGradingModal(userId) {
 
   const nameTitle = document.getElementById('modalUserNameTitle');
   const msgInput = document.getElementById('adminMessageInput');
-  if (nameTitle) nameTitle.textContent = `مراجعة امتحان: ${user.name || ''} (${user.phone || ''})`;
+
+  // إعداد رابط الواتساب داخل النافذة المنبثقة
+  let modalPhone = (user.phone || '').toString().trim().replace(/[^0-9]/g, '');
+  if (modalPhone.startsWith('01') && modalPhone.length === 11) {
+    modalPhone = '20' + modalPhone.substring(1);
+  }
+  const waModalLink = `https://wa.me/${modalPhone}?text=${encodeURIComponent("اهلا نتيجتك ظهرت في الموقع الان")}`;
+
+  if (nameTitle) {
+    nameTitle.innerHTML = `
+      مراجعة امتحان: ${user.name || ''} (${user.phone || ''}) 
+      ${modalPhone ? `
+        <a href="${waModalLink}" target="_blank" style="color: #25D366; text-decoration: none; margin-right: 10px; font-size: 0.9rem;">
+          <i class="fa-brands fa-whatsapp"></i> إرسال النتيجة
+        </a>
+      ` : ''}
+    `;
+  }
+
   if (msgInput) msgInput.value = user.adminMessage || "";
 
   const container = document.getElementById('modalExamContent');
