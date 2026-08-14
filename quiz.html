@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football Quiz | الامتحان</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Navbar Header -->
+  <header class="navbar">
+    <div class="brand">
+      <i class="fa-solid fa-football brand-icon"></i>
+      <span>Football Quiz</span>
+    </div>
+
+    <!-- Active User Display -->
+    <div class="user-badge" id="navUserBadge" style="display: none;">
+      <img id="navUserPhoto" src="" alt="المستخدم">
+      <div>
+        <div id="navUserName" style="font-weight: 700; font-size: 0.95rem;"></div>
+        <small style="color: var(--text-muted);" id="navUserPhone"></small>
+      </div>
+    </div>
+
+    <button id="themeToggleBtn" class="theme-toggle">
+      <i class="fa-solid fa-moon"></i>
+      <span>الوضع الداكن</span>
+    </button>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="main-container">
+    <div class="form-wrapper glass-card" style="max-width: 720px;">
+
+      <!-- Loader Screen -->
+      <div id="loadingScreen" style="text-align: center; padding: 3rem;">
+        <i class="fa-solid fa-spinner fa-spin fa-3x" style="color: var(--primary);"></i>
+        <p style="margin-top: 1rem;">جاري تحميل البيانات...</p>
+      </div>
+
+      <!-- Blocked Account Screen -->
+      <div id="blockedScreen" class="blocked-overlay-screen" style="display: none;">
+        <i class="fa-solid fa-user-slash"></i>
+        <h2>تم حظر هذا الحساب</h2>
+        <p style="color: var(--text-muted); margin-top: 0.5rem;">عذرًا، تم حظر حسابك من إجراء الامتحان بواسطة إداريي النظام.</p>
+      </div>
+
+      <!-- Active Exam Screen -->
+      <div id="examContainer" style="display: none;">
+        <!-- Exam Meta Header -->
+        <div class="quiz-header">
+          <div style="font-weight: 700; color: var(--primary);" id="questionCounter">السؤال 1 من 6</div>
+          <div class="timer-box" id="timerBox">
+            <i class="fa-regular fa-clock"></i>
+            <span id="timerDisplay">25:00</span>
+          </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+        </div>
+
+        <!-- Question Body Card -->
+        <div class="question-card">
+          <div id="questionImgWrapper" class="question-img-wrapper" style="display: none;">
+            <img id="questionImg" src="" alt="صورة السؤال" class="question-img">
+          </div>
+          <h2 id="questionText" class="question-title"></h2>
+
+          <!-- Dynamic Options Grid for Multiple Choice -->
+          <div id="optionsGrid" class="options-grid" style="display: none;"></div>
+
+          <!-- Textarea for Essay Q6 -->
+          <div id="essayContainer" style="display: none;">
+            <textarea id="essayAnswer" class="essay-textarea" placeholder="اكتب إجابتك هنا بالتفصيل..."></textarea>
+          </div>
+        </div>
+
+        <!-- Navigation Action Buttons -->
+        <div class="quiz-nav-btns">
+          <button id="prevBtn" class="btn-secondary" disabled><i class="fa-solid fa-arrow-right"></i> السابق</button>
+          <button id="nextBtn" class="btn-primary" style="width: auto; padding: 0.75rem 2rem;">التالي <i class="fa-solid fa-arrow-left"></i></button>
+        </div>
+      </div>
+
+      <!-- Submitted / Waiting / Result Screen -->
+      <div id="resultContainer" style="display: none; text-align: center;">
+        <div id="pendingReviewBox">
+          <i class="fa-solid fa-hourglass-half fa-3x" style="color: var(--accent); margin-bottom: 1rem;"></i>
+          <h2>تم تسليم الامتحان بنجاح!</h2>
+          <p style="color: var(--text-muted); margin-top: 0.5rem;">سيتم مراجعة إجابتك المقالية وتدقيقها من قِبل إدارة الموقع، وستظهر النتيجة النهائية هنا فور نشرها.</p>
+        </div>
+
+        <!-- Published Result Card -->
+        <div id="publishedResultBox" style="display: none; text-align: right;">
+          <div style="text-align: center; margin-bottom: 2rem;">
+            <i class="fa-solid fa-trophy fa-3x" style="color: var(--accent);"></i>
+            <h2 style="margin-top: 0.5rem;">نتيجة الاختبار النهائي</h2>
+            <div style="font-size: 2.5rem; font-weight: 900; color: var(--primary); margin: 0.5rem 0;" id="finalScoreText">10 / 12</div>
+            <p id="adminMessageBanner" style="background: rgba(16,185,129,0.1); border: 1px solid var(--primary); padding: 0.75rem; border-radius: 8px; color: var(--primary); font-weight: 600; display: none;"></p>
+          </div>
+
+          <hr style="border-color: var(--glass-border); margin-bottom: 1.5rem;">
+          <h3 style="margin-bottom: 1rem; color: var(--primary);">تفاصيل الأسئلة والإجابات:</h3>
+          <div id="questionsReviewList"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Submit Confirmation Modal -->
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal-box">
+      <i class="fa-solid fa-circle-question fa-3x" style="color: var(--accent); margin-bottom: 1rem;"></i>
+      <h3>تأكيد تسليم الامتحان</h3>
+      <p style="color: var(--text-muted); margin-top: 0.5rem;">هل أنت متأكد من تسليم الامتحان الآن؟ لن تتمكن من تعديل أي إجابات بعد التأكيد.</p>
+      <div class="modal-actions">
+        <button id="cancelSubmitBtn" class="btn-secondary" style="flex: 1;">إلغاء</button>
+        <button id="confirmSubmitBtn" class="btn-primary" style="flex: 1;">تأكيد التسليم</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script type="module" src="quiz.js"></script>
+</body>
+</html>
