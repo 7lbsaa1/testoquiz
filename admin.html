@@ -3,108 +3,472 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Football Quiz | لوحة تحكم الإدارة</title>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <title>لوحة التحكم - إدارة مسابقة كرة القدم</title>
+  
+  <!-- خط Tajawal & FontAwesome -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      --glass-bg: rgba(30, 41, 59, 0.7);
+      --glass-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --accent: #8b5cf6;
+      --card-bg: rgba(15, 23, 42, 0.6);
+    }
+
+    [data-theme="light"] {
+      --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      --glass-bg: rgba(255, 255, 255, 0.8);
+      --glass-border: rgba(0, 0, 0, 0.1);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --card-bg: rgba(255, 255, 255, 0.9);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Tajawal', sans-serif;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* Navbar Header */
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      padding: 1rem 1.5rem;
+      border-radius: 16px;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    }
+
+    .admin-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .theme-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid var(--glass-border);
+      color: var(--text-main);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .theme-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    /* Analytics Cards Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      background: rgba(59, 130, 246, 0.15);
+      color: var(--primary);
+    }
+
+    .stat-info h4 {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .stat-info span {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .search-box i {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 40px 10px 14px;
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 10px;
+      color: var(--text-main);
+      outline: none;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+    }
+
+    /* Table Container */
+    .table-container {
+      background: var(--glass-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      overflow-x: auto;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: right;
+    }
+
+    th, td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--glass-border);
+      white-space: nowrap;
+    }
+
+    th {
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+
+    .table-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .badge-success { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+    .badge-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+    .badge-danger { background: rgba(239, 68, 68, 0.15); color: var(--danger); }
+
+    .action-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-primary, .btn-secondary {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary { background: rgba(255,255,255,0.1); color: var(--text-main); }
+
+    /* Modal Styling */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal-card {
+      background: #1e293b;
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 750px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    .modal-header {
+      padding: 1.25rem;
+      border-bottom: 1px solid var(--glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-body {
+      padding: 1.25rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 1.25rem;
+      border-top: 1px solid var(--glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .glass-card {
+      background: var(--card-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      color: var(--text-main);
+      margin-top: 4px;
+    }
+
+    /* Toast Container */
+    #toastContainer {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .toast {
+      background: #1e293b;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      border-right: 4px solid var(--success);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toast.error {
+      border-right-color: var(--danger);
+    }
+  </style>
 </head>
 <body>
 
-  <!-- Admin Navbar -->
-  <header class="navbar">
-    <div class="brand">
-      <i class="fa-solid fa-user-shield brand-icon"></i>
-      <span>Football Quiz Admin</span>
-    </div>
-    <button id="themeToggleBtn" class="theme-toggle">
-      <i class="fa-solid fa-moon"></i>
-      <span>الوضع الداكن</span>
-    </button>
-  </header>
+  <div class="container">
+    <!-- Header -->
+    <header class="admin-header">
+      <div class="admin-title">
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>لوحة التحكم والإدارة</span>
+      </div>
+      <button class="theme-btn" id="themeToggleBtn">
+        <i class="fa-solid fa-moon"></i>
+        <span>الوضع</span>
+      </button>
+    </header>
 
-  <!-- Admin Container -->
-  <main class="main-container" style="align-items: flex-start; padding-top: 2rem;">
-    <div class="form-wrapper glass-card" style="max-width: 1100px;">
+    <!-- Stat Cards -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        <div class="stat-info">
+          <h4>إجمالي المسجلين</h4>
+          <span id="statTotalUsers">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="color: var(--warning); background: rgba(245, 158, 11, 0.15);"><i class="fa-solid fa-pen-ruler"></i></div>
+        <div class="stat-info">
+          <h4>بدأوا الامتحان</h4>
+          <span id="statStarted">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="color: var(--success); background: rgba(16, 185, 129, 0.15);"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="stat-info">
+          <h4>تم التسليم</h4>
+          <span id="statSubmitted">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="color: var(--accent); background: rgba(139, 92, 246, 0.15);"><i class="fa-solid fa-bullhorn"></i></div>
+        <div class="stat-info">
+          <h4>نتائج منشورة</h4>
+          <span id="statReviewed">0</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon" style="color: var(--danger); background: rgba(239, 68, 68, 0.15);"><i class="fa-solid fa-user-slash"></i></div>
+        <div class="stat-info">
+          <h4>المحظورون</h4>
+          <span id="statBlocked">0</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Table Controls -->
+    <div class="controls-bar">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="adminSearchInput" class="search-input" placeholder="ابحث باسم المستخدم أو رقم الهاتف...">
+      </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>الصورة</th>
+            <th>الاسم</th>
+            <th>رقم الهاتف / واتساب</th>
+            <th>وقت البدء</th>
+            <th>حالة الاختبار</th>
+            <th>الدرجة</th>
+            <th>النتيجة</th>
+            <th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          <tr>
+            <td colspan="8" style="text-align: center; color: var(--text-muted);">جاري تحميل بيانات المستخدمين...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal المراجعة والتصحيح -->
+  <div class="modal-overlay" id="gradingModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalUserNameTitle" style="display: flex; align-items: center; gap: 8px;">مراجعة الامتحان</h3>
+        <button id="closeGradingModalBtn" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
       
-      <!-- Quick Statistics Cards -->
-      <div class="admin-stats-grid">
-        <div class="stat-card">
-          <h3 id="statTotalUsers">0</h3>
-          <p>إجمالي المستخدمين</p>
+      <div class="modal-body">
+        <div id="modalExamContent">
+          <!-- يتم بناء الأسئلة والإجابات هنا عبر JavaScript -->
         </div>
-        <div class="stat-card">
-          <h3 id="statStarted">0</h3>
-          <p>من بدأوا الامتحان</p>
-        </div>
-        <div class="stat-card">
-          <h3 id="statSubmitted">0</h3>
-          <p>من سلموا الامتحان</p>
-        </div>
-        <div class="stat-card">
-          <h3 id="statBlocked" style="color: var(--danger);">0</h3>
-          <p>المحظورين</p>
-        </div>
-        <div class="stat-card">
-          <h3 id="statReviewed" style="color: #34d399;">0</h3>
-          <p>تمت المراجعة والنشر</p>
+
+        <div class="glass-card" style="padding: 1rem; margin-top: 1rem;">
+          <label style="font-weight: 700; color: var(--primary);">رسالة مخصصة للعميل (تظهر في صفحة النتيجة):</label>
+          <input type="text" id="adminMessageInput" class="form-control" placeholder="مثال: أداء ممتاز يا بطل!">
         </div>
       </div>
 
-      <!-- User List Table -->
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h2><i class="fa-solid fa-users"></i> قائمة المتقدمين للامتحان</h2>
-        <input type="text" id="adminSearchInput" class="form-control" placeholder="بحث بالاسم أو رقم الهاتف..." style="max-width: 300px;">
-      </div>
-
-      <div class="admin-table-wrapper">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>الصورة</th>
-              <th>الاسم</th>
-              <th>رقم الهاتف</th>
-              <th>وقت الدخول</th>
-              <th>حالة الامتحان</th>
-              <th>الدرجة الحالية</th>
-              <th>حالة النشر</th>
-              <th>الإجراءات والتحكم</th>
-            </tr>
-          </thead>
-          <tbody id="usersTableBody">
-            <tr>
-              <td colspan="8" style="text-align: center; padding: 2rem;">جاري تحميل البيانات من قاعدة البيانات...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-    </div>
-  </main>
-
-  <!-- Inspection & Grading Modal -->
-  <div id="gradingModal" class="modal-overlay">
-    <div class="modal-box" style="max-width: 750px; text-align: right; max-height: 90vh; overflow-y: auto;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 id="modalUserNameTitle"><i class="fa-solid fa-clipboard-check"></i> مراجعة امتحان المستخدم</h3>
-        <button id="closeGradingModalBtn" style="background: none; border: none; color: var(--text-main); font-size: 1.5rem; cursor: pointer;">&times;</button>
-      </div>
-
-      <div id="modalExamContent"></div>
-
-      <!-- Admin Private Message & Publish Action -->
-      <div style="margin-top: 1.5rem; background: var(--input-bg); padding: 1rem; border-radius: var(--radius-md);">
-        <label style="font-weight: 700; display: block; margin-bottom: 0.5rem;"><i class="fa-solid fa-envelope"></i> رسالة وملاحظات الإدارة للعميل:</label>
-        <textarea id="adminMessageInput" class="form-control" style="min-height: 80px;" placeholder="اكتب رسالة تظهر للمستخدم عند فتح النتيجة..."></textarea>
-      </div>
-
-      <div class="modal-actions" style="margin-top: 1.5rem;">
-        <button id="saveGradingBtn" class="btn-primary" style="flex: 2;"><i class="fa-solid fa-floppy-disk"></i> حفظ التصحيح والملاحظات</button>
-        <button id="togglePublishResultBtn" class="btn-secondary" style="flex: 1;"><i class="fa-solid fa-bullhorn"></i> إظهار/إخفاء النتيجة</button>
+      <div class="modal-footer">
+        <button id="togglePublishResultBtn" class="btn-secondary">
+          <i class="fa-solid fa-eye"></i> إظهار/إخفاء النتيجة
+        </button>
+        <button id="saveGradingBtn" class="btn-primary">
+          <i class="fa-solid fa-floppy-disk"></i> حفظ التصحيح والدرجات
+        </button>
       </div>
     </div>
   </div>
 
-  <div id="toastContainer" class="toast-container"></div>
+  <!-- Toast Container -->
+  <div id="toastContainer"></div>
 
-  <script type="module" src="admin.js"></script>
+  <!-- Firebase Script -->
+  <script type="module" src="./admin.js"></script>
 </body>
 </html>
