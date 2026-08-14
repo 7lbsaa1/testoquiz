@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football Quiz | لوحة تحكم الإدارة</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Admin Navbar -->
+  <header class="navbar">
+    <div class="brand">
+      <i class="fa-solid fa-user-shield brand-icon"></i>
+      <span>Football Quiz Admin</span>
+    </div>
+    <button id="themeToggleBtn" class="theme-toggle">
+      <i class="fa-solid fa-moon"></i>
+      <span>الوضع الداكن</span>
+    </button>
+  </header>
+
+  <!-- Admin Container -->
+  <main class="main-container" style="align-items: flex-start; padding-top: 2rem;">
+    <div class="form-wrapper glass-card" style="max-width: 1100px;">
+      
+      <!-- Quick Statistics Cards -->
+      <div class="admin-stats-grid">
+        <div class="stat-card">
+          <h3 id="statTotalUsers">0</h3>
+          <p>إجمالي المستخدمين</p>
+        </div>
+        <div class="stat-card">
+          <h3 id="statStarted">0</h3>
+          <p>من بدأوا الامتحان</p>
+        </div>
+        <div class="stat-card">
+          <h3 id="statSubmitted">0</h3>
+          <p>من سلموا الامتحان</p>
+        </div>
+        <div class="stat-card">
+          <h3 id="statBlocked" style="color: var(--danger);">0</h3>
+          <p>المحظورين</p>
+        </div>
+        <div class="stat-card">
+          <h3 id="statReviewed" style="color: #34d399;">0</h3>
+          <p>تمت المراجعة والنشر</p>
+        </div>
+      </div>
+
+      <!-- User List Table -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2><i class="fa-solid fa-users"></i> قائمة المتقدمين للامتحان</h2>
+        <input type="text" id="adminSearchInput" class="form-control" placeholder="بحث بالاسم أو رقم الهاتف..." style="max-width: 300px;">
+      </div>
+
+      <div class="admin-table-wrapper">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>الصورة</th>
+              <th>الاسم</th>
+              <th>رقم الهاتف</th>
+              <th>وقت الدخول</th>
+              <th>حالة الامتحان</th>
+              <th>الدرجة الحالية</th>
+              <th>حالة النشر</th>
+              <th>الإجراءات والتحكم</th>
+            </tr>
+          </thead>
+          <tbody id="usersTableBody">
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 2rem;">جاري تحميل البيانات من قاعدة البيانات...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Inspection & Grading Modal -->
+  <div id="gradingModal" class="modal-overlay">
+    <div class="modal-box" style="max-width: 750px; text-align: right; max-height: 90vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 id="modalUserNameTitle"><i class="fa-solid fa-clipboard-check"></i> مراجعة امتحان المستخدم</h3>
+        <button id="closeGradingModalBtn" style="background: none; border: none; color: var(--text-main); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+
+      <div id="modalExamContent"></div>
+
+      <!-- Admin Private Message & Publish Action -->
+      <div style="margin-top: 1.5rem; background: var(--input-bg); padding: 1rem; border-radius: var(--radius-md);">
+        <label style="font-weight: 700; display: block; margin-bottom: 0.5rem;"><i class="fa-solid fa-envelope"></i> رسالة وملاحظات الإدارة للعميل:</label>
+        <textarea id="adminMessageInput" class="form-control" style="min-height: 80px;" placeholder="اكتب رسالة تظهر للمستخدم عند فتح النتيجة..."></textarea>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 1.5rem;">
+        <button id="saveGradingBtn" class="btn-primary" style="flex: 2;"><i class="fa-solid fa-floppy-disk"></i> حفظ التصحيح والملاحظات</button>
+        <button id="togglePublishResultBtn" class="btn-secondary" style="flex: 1;"><i class="fa-solid fa-bullhorn"></i> إظهار/إخفاء النتيجة</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
