@@ -9,7 +9,8 @@ import {
   onValue, 
   push, 
   child,
-  serverTimestamp
+  serverTimestamp,
+  remove // <--- تمت إضافة هذه هنا
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import {
   getAuth,
@@ -46,5 +47,6 @@ export {
   serverTimestamp,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  remove // <--- وتمت إضافتها في التصدير هنا
 };
