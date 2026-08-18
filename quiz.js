@@ -4,7 +4,7 @@ import { db, ref, get, set, update, onValue } from "./firebase-config.js";
 // 1. إعدادات الامتحان (تحديد الامتحان الحالي)
 // ==========================================
 const urlParams = new URLSearchParams(window.location.search);
-const activeQuizId = urlParams.get('quiz') || 'quiz1'; // الافتراضي هو الامتحان الأول إذا لم يكن هناك شيء في الرابط
+const activeQuizId = urlParams.get('quiz') || 'quiz1'; // الافتراضي هو الامتحان الأول
 
 const currentUserId = localStorage.getItem('fq_user_id');
 
@@ -14,24 +14,22 @@ if (!currentUserId) {
 }
 
 // ==========================================
-// 2. بنك الأسئلة (يمكنك تغييره حسب رقم الامتحان)
+// 2. بنك الأسئلة
 // ==========================================
 let questionsData = [];
 
 if (activeQuizId === 'quiz1') {
     questionsData = [
-        { id: 'q1', text: 'من هو هذا اللاعب؟', type: 'mcq', correctAnswer: "فرناندو توريس", options: ["فرناندو توريس", "ديفيد فيا", "راؤول"] },
-        { id: 'q2', text: 'من هو هذا اللاعب؟', type: 'mcq', correctAnswer: "كولر", options: ["كولر", "يان كولر", "بيتر تشيك"] },
-        { id: 'q3', text: 'من فاز بدوري أبطال أوروبا عام 2020؟', type: 'mcq', correctAnswer: "بايرن ميونخ", options: ["بايرن ميونخ", "ريال مدريد", "باريس سان جيرمان"] },
-        { id: 'q4', text: 'كم ناديًا لعب له كريستيانو رونالدو؟', type: 'mcq', correctAnswer: "5", options: ["4", "5", "6"] },
-        { id: 'q5', text: 'متى فاز هذا اللاعب بالكرة الذهبية؟', type: 'mcq', correctAnswer: "2003", options: ["2001", "2003", "2004"] },
-        { id: 'q6', text: 'اذكر 3 أندية لعب لها هذا اللاعب مع ذكر اسمه.', type: 'essay' } // سؤال مقالي (درجته بيد الأدمن)
+        { id: 'q1', text: 'من هو هذا اللاعب؟', img: 'https://i.pinimg.com/736x/21/75/94/217594dd06dcd7d74f8439a7f799a04b.jpg', type: 'mcq', correctAnswer: "فرناندو توريس", options: ["فرناندو توريس", "ديفيد فيا", "راؤول"] },
+        { id: 'q2', text: 'من هو هذا اللاعب؟', img: 'https://i.pinimg.com/736x/1f/ce/d0/1fced0e99995f28dfe40414031a6bca0.jpg', type: 'mcq', correctAnswer: "كولر", options: ["كولر", "يان كولر", "بيتر تشيك"] },
+        { id: 'q3', text: 'من فاز بدوري أبطال أوروبا عام 2020؟', img: null, type: 'mcq', correctAnswer: "بايرن ميونخ", options: ["بايرن ميونخ", "ريال مدريد", "باريس سان جيرمان"] },
+        { id: 'q4', text: 'كم ناديًا لعب له كريستيانو رونالدو؟', img: 'https://i.pinimg.com/736x/4f/07/94/4f079491ea9e6a7411210d79299ec283.jpg', type: 'mcq', correctAnswer: "5", options: ["4", "5", "6"] },
+        { id: 'q5', text: 'متى فاز هذا اللاعب بالكرة الذهبية؟', img: 'https://i.pinimg.com/736x/26/36/5f/26365fa3abdafd83a278560dd4751101.jpg', type: 'mcq', correctAnswer: "2003", options: ["2001", "2003", "2004"] },
+        { id: 'q6', text: 'اذكر 3 أندية لعب لها هذا اللاعب مع ذكر اسمه.', img: 'https://i.pinimg.com/1200x/51/82/72/518272b60063af622e8ee5e441105c03.jpg', type: 'essay' }
     ];
 } else if (activeQuizId === 'quiz2') {
-    // يمكنك هنا وضع أسئلة الامتحان الثاني مستقبلاً
     questionsData = [
-        { id: 'q1', text: 'من هو الهداف التاريخي لكأس العالم؟', type: 'mcq', correctAnswer: "ميروسلاف كلوزه", options: ["الظاهرة رونالدو", "ميروسلاف كلوزه", "بيليه"] },
-        // أضف المزيد...
+        { id: 'q1', text: 'من هو الهداف التاريخي لكأس العالم؟', img: null, type: 'mcq', correctAnswer: "ميروسلاف كلوزه", options: ["الظاهرة رونالدو", "ميروسلاف كلوزه", "بيليه"] }
     ];
 }
 
@@ -43,70 +41,91 @@ let isSubmitted = false;
 let quizRefPath = `users/${currentUserId}/quizzes/${activeQuizId}`;
 
 // ==========================================
-// 4. التهيئة عند فتح الصفحة
+// 4. إظهار المحتوى وإخفاء شاشة التحميل
 // ==========================================
-async function initQuiz() {
-    const quizRef = ref(db, quizRefPath);
-    const snapshot = await get(quizRef);
-
-    if (snapshot.exists()) {
-        const data = snapshot.val();
-        
-        // إذا كان قد سلم الامتحان بالفعل
-        if (data.examStatus === 'submitted') {
-            isSubmitted = true;
-            userAnswers = data.answers || {};
-            showResultsUI(data); // إظهار واجهة النتيجة بدلاً من الامتحان
-            return;
-        } else {
-            // استرجاع الإجابات المحفوظة كمسودة (إن وجد)
-            userAnswers = data.answers || {};
-        }
-    } else {
-        // إنشاء سجل الامتحان للمرة الأولى إذا لم يكن موجوداً
-        await update(ref(db, `users/${currentUserId}`), {
-            lastActiveQuiz: activeQuizId,
-            lastLogin: Date.now()
-        });
-    }
-
-    renderQuestions(); // عرض الأسئلة
+function hideLoadingShowContent() {
+    const loadingEl = document.getElementById('loadingScreen');
+    const contentEl = document.getElementById('quizContent');
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (contentEl) contentEl.style.display = 'block';
 }
 
 // ==========================================
-// 5. عرض الأسئلة في الواجهة
+// 5. التهيئة عند فتح الصفحة
+// ==========================================
+async function initQuiz() {
+    try {
+        const quizRef = ref(db, quizRefPath);
+        const snapshot = await get(quizRef);
+
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            
+            // إذا كان قد سلم الامتحان بالفعل
+            if (data.examStatus === 'submitted') {
+                isSubmitted = true;
+                userAnswers = data.answers || {};
+                hideLoadingShowContent();
+                showResultsUI(data);
+                return;
+            } else {
+                userAnswers = data.answers || {};
+            }
+        } else {
+            await update(ref(db, `users/${currentUserId}`), {
+                lastActiveQuiz: activeQuizId,
+                lastLogin: Date.now()
+            });
+        }
+
+        hideLoadingShowContent();
+        renderQuestions();
+    } catch (err) {
+        console.error("خطأ في جلب بيانات الامتحان:", err);
+        hideLoadingShowContent();
+    }
+}
+
+// ==========================================
+// 6. عرض الأسئلة في الواجهة
 // ==========================================
 function renderQuestions() {
-    const container = document.getElementById('quizContainer'); // تأكد أن لديك div بهذا الـ id في الـ HTML
+    const container = document.getElementById('questionContainer');
     if (!container) return;
     
-    container.innerHTML = ''; // تفريغ الحاوية
+    container.innerHTML = '';
+
+    const titleEl = document.getElementById('quizTitle');
+    if (titleEl) {
+        titleEl.textContent = activeQuizId === 'quiz1' ? 'الامتحان الأول' : activeQuizId === 'quiz2' ? 'الامتحان الثاني' : activeQuizId;
+    }
 
     questionsData.forEach((q, index) => {
         const qDiv = document.createElement('div');
-        qDiv.className = 'question-card glass-card';
-        qDiv.style.padding = '1.5rem';
-        qDiv.style.marginBottom = '1.5rem';
-        qDiv.style.borderRadius = '12px';
+        qDiv.className = 'question-card';
+        qDiv.style.marginBottom = '2rem';
 
-        let htmlContent = `<h3 style="margin-bottom: 1rem;">س${index + 1}: ${q.text}</h3>`;
+        let htmlContent = `<h3 style="margin-bottom: 1rem; font-size: 1.1rem;">س${index + 1}: ${q.text}</h3>`;
+
+        if (q.img) {
+            htmlContent += `<img src="${q.img}" class="q-img" alt="صورة السؤال">`;
+        }
 
         if (q.type === 'mcq') {
-            htmlContent += `<div class="options-group" style="display: flex; flex-direction: column; gap: 10px;">`;
+            htmlContent += `<div class="options-container">`;
             q.options.forEach(opt => {
-                const isChecked = userAnswers[q.id] === opt ? 'checked' : '';
+                const isSelected = userAnswers[q.id] === opt ? 'selected' : '';
                 htmlContent += `
-                    <label style="padding: 10px; background: rgba(0,0,0,0.1); border-radius: 8px; cursor: pointer;">
-                        <input type="radio" name="${q.id}" value="${opt}" ${isChecked} onchange="saveAnswer('${q.id}', '${opt}')">
+                    <button type="button" class="option-btn ${isSelected}" onclick="selectOption('${q.id}', '${opt}', this)">
                         ${opt}
-                    </label>
+                    </button>
                 `;
             });
             htmlContent += `</div>`;
         } else if (q.type === 'essay') {
             const savedText = userAnswers[q.id] || '';
             htmlContent += `
-                <textarea rows="4" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; background: rgba(255,255,255,0.05); color: #fff;" 
+                <textarea class="textarea-control" 
                 oninput="saveAnswer('${q.id}', this.value)" placeholder="اكتب إجابتك هنا...">${savedText}</textarea>
             `;
         }
@@ -115,58 +134,84 @@ function renderQuestions() {
         container.appendChild(qDiv);
     });
 
-    // إضافة زر التسليم
-    const submitBtn = document.createElement('button');
-    submitBtn.textContent = 'تسليم الامتحان';
-    submitBtn.className = 'btn-primary';
-    submitBtn.style.cssText = 'width: 100%; padding: 12px; font-size: 1.1rem; border-radius: 8px; background: #3b82f6; color: white; border: none; cursor: pointer; margin-top: 1rem;';
-    submitBtn.onclick = submitQuiz;
-    container.appendChild(submitBtn);
+    // إخفاء زر "السؤال التالي" واستبداله بزر التسليم
+    const oldNextBtn = document.getElementById('nextQuestionBtn');
+    if (oldNextBtn) {
+        oldNextBtn.style.display = 'none';
+    }
+
+    // إضافة زر التسليم الأساسي
+    let submitBtn = document.getElementById('submitQuizBtn');
+    if (!submitBtn) {
+        submitBtn = document.createElement('button');
+        submitBtn.id = 'submitQuizBtn';
+        submitBtn.className = 'btn-submit';
+        submitBtn.innerHTML = `<span>تسليم الامتحان النهائي</span> <i class="fa-solid fa-paper-plane"></i>`;
+        submitBtn.onclick = submitQuiz;
+        container.appendChild(submitBtn);
+    }
 }
 
 // ==========================================
-// 6. حفظ الإجابات أولاً بأول (حتى لا تضيع)
+// 7. اختيار وتحديد الخيارات المقترحة
+// ==========================================
+window.selectOption = function(questionId, value, btnElement) {
+    if (isSubmitted) return;
+    
+    // إلغاء تحديد التحديدات القديمة لهذا السؤال
+    const parent = btnElement.closest('.options-container');
+    if (parent) {
+        parent.querySelectorAll('.option-btn').forEach(btn => btn.classList.remove('selected'));
+    }
+    
+    // تحديد الزر الحالي
+    btnElement.classList.add('selected');
+    
+    // حفظ الإجابة
+    window.saveAnswer(questionId, value);
+};
+
+// ==========================================
+// 8. حفظ الإجابات أولاً بأول (حتى لا تضيع)
 // ==========================================
 window.saveAnswer = async function(questionId, value) {
     if (isSubmitted) return;
     userAnswers[questionId] = value;
     
-    // حفظ في قاعدة البيانات بشكل لحظي كمسودة
-    await update(ref(db, quizRefPath), {
-        answers: userAnswers,
-        lastUpdated: Date.now()
-    });
+    try {
+        await update(ref(db, quizRefPath), {
+            answers: userAnswers,
+            lastUpdated: Date.now()
+        });
+    } catch (e) {
+        console.error("خطأ أثناء حفظ الإجابة:", e);
+    }
 };
 
 // ==========================================
-// 7. تسليم الامتحان النهائي (Submit)
+// 9. تسليم الامتحان النهائي (Submit)
 // ==========================================
 async function submitQuiz() {
-    // تأكيد التسليم
     const confirmSubmit = confirm('هل أنت متأكد من رغبتك في تسليم الامتحان؟ لا يمكنك التعديل بعد التسليم.');
     if (!confirmSubmit) return;
 
-    // تعطيل الواجهة
     isSubmitted = true;
     let calculatedScore = 0;
     let gradingMap = {};
 
-    // تصحيح تلقائي لأسئلة الاختيار من متعدد
     questionsData.forEach(q => {
         if (q.type === 'mcq') {
             if (userAnswers[q.id] === q.correctAnswer) {
-                calculatedScore += 2; // الدرجة لكل سؤال
+                calculatedScore += 2;
                 gradingMap[q.id] = 2;
             } else {
                 gradingMap[q.id] = 0;
             }
         } else {
-            // السؤال المقالي يتم تصحيحه بواسطة الأدمن، لذا درجته المبدئية 0
             gradingMap[q.id] = 0; 
         }
     });
 
-    // رفع النتيجة النهائية إلى Firebase
     const updates = {
         answers: userAnswers,
         grading: gradingMap,
@@ -178,7 +223,7 @@ async function submitQuiz() {
     try {
         await update(ref(db, quizRefPath), updates);
         alert('تم تسليم الامتحان بنجاح!');
-        location.reload(); // إعادة تحميل الصفحة لعرض واجهة النتيجة
+        location.reload();
     } catch (error) {
         console.error("خطأ في تسليم الامتحان: ", error);
         alert('حدث خطأ أثناء التسليم، يرجى المحاولة مرة أخرى.');
@@ -187,32 +232,31 @@ async function submitQuiz() {
 }
 
 // ==========================================
-// 8. واجهة إظهار النتيجة (إذا كان قد امتحن مسبقاً)
+// 10. واجهة إظهار النتيجة (إذا كان قد امتحن مسبقاً)
 // ==========================================
 function showResultsUI(data) {
-    const container = document.getElementById('quizContainer');
+    const container = document.getElementById('quizContent');
     if (!container) return;
 
     let adminMessageHTML = data.adminMessage 
-        ? `<div style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #fff;">
+        ? `<div style="background: rgba(16, 185, 129, 0.2); border: 1px solid #10b981; padding: 15px; border-radius: 8px; margin-bottom: 20px; color: #fff; text-align: right;">
              <strong>رسالة من الأدمن:</strong> ${data.adminMessage}
            </div>` 
         : '';
 
-    // جمع الدرجات (الاختياري التلقائي + المقالي إن قام الأدمن بتصحيحه)
     let finalScore = data.score || 0;
     if (data.grading && data.grading.q6) {
-        finalScore += parseInt(data.grading.q6); // إضافة درجة السؤال المقالي
+        finalScore += parseInt(data.grading.q6);
     }
 
     container.innerHTML = `
-        <div style="text-align: center; padding: 2rem; background: rgba(30, 41, 59, 0.8); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);">
+        <div style="text-align: center; padding: 2rem 1rem;">
             <i class="fa-solid fa-circle-check" style="font-size: 4rem; color: #10b981; margin-bottom: 1rem;"></i>
             <h2 style="margin-bottom: 1rem; color: #fff;">لقد قمت بتسليم هذا الامتحان بالفعل</h2>
             ${adminMessageHTML}
-            <h3 style="color: #3b82f6;">درجتك الحالية: ${finalScore} / 12</h3>
-            <p style="color: #94a3b8; margin-top: 10px; font-size: 0.9rem;">
-                (ملاحظة: درجات الأسئلة المقالية قد تتطلب مراجعة الأدمن ليتم إضافتها لمجموعك)
+            <h3 style="color: #3b82f6; font-size: 1.5rem; margin-bottom: 1rem;">درجتك الحالية: ${finalScore} / 12</h3>
+            <p style="color: #94a3b8; font-size: 0.9rem;">
+                (ملاحظة: درجات الأسئلة المقالية تتطلب مراجعة الأدمن ليتم إضافتها لمجموعك الكلي)
             </p>
         </div>
     `;
