@@ -5,12 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>لوحة التحكم - إدارة الامتحانات</title>
   
+  <!-- الخطوط والأيقونات -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
   <style>
+    /* المتغيرات (الألوان والوضع) */
     :root {
       --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
       --glass-bg: rgba(30, 41, 59, 0.7);
@@ -26,6 +28,7 @@
       --card-bg: rgba(15, 23, 42, 0.6);
     }
 
+    /* الوضع النهاري */
     [data-theme="light"] {
       --bg-gradient: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
       --glass-bg: rgba(255, 255, 255, 0.8);
@@ -39,6 +42,7 @@
     body { background: var(--bg-gradient); color: var(--text-main); min-height: 100vh; padding: 2rem 1rem; }
     .container { max-width: 1250px; margin: 0 auto; }
 
+    /* الهيدر */
     .admin-header {
       display: flex; justify-content: space-between; align-items: center;
       background: var(--glass-bg); backdrop-filter: blur(12px); border: 1px solid var(--glass-border);
@@ -48,82 +52,93 @@
 
     .theme-btn {
       background: rgba(255, 255, 255, 0.1); border: 1px solid var(--glass-border); color: var(--text-main);
-      padding: 8px 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: 0.3s;
     }
+    .theme-btn:hover { background: rgba(255, 255, 255, 0.2); }
 
+    /* الإحصائيات */
     .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
     .stat-card { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 14px; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; }
     .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: rgba(59, 130, 246, 0.15); color: var(--primary); }
     .stat-info h4 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
     .stat-info span { font-size: 1.5rem; font-weight: 800; }
 
+    /* شريط البحث */
     .controls-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
     .search-box { position: relative; flex: 1; }
     .search-box i { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-    .search-input { width: 100%; padding: 10px 40px 10px 14px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text-main); outline: none; }
+    .search-input { width: 100%; padding: 12px 40px 12px 14px; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 10px; color: var(--text-main); outline: none; transition: 0.3s; }
+    .search-input:focus { border-color: var(--primary); }
 
+    /* الجدول */
     .table-container { background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 16px; overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; text-align: right; }
     th, td { padding: 1rem; border-bottom: 1px solid var(--glass-border); white-space: nowrap; }
-    th { background: rgba(0, 0, 0, 0.2); color: var(--text-muted); font-weight: 700; font-size: 0.9rem; }
-    .table-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    th { background: rgba(0, 0, 0, 0.2); color: var(--text-muted); font-weight: 700; font-size: 0.95rem; }
+    .table-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--glass-border); }
 
+    /* أزرار الامتحانات (Pills) */
     .quiz-pill {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.08);
-      font-size: 0.82rem; margin: 2px; cursor: pointer; border: 1px solid var(--glass-border);
+      padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.08);
+      font-size: 0.85rem; margin: 3px; cursor: pointer; border: 1px solid var(--glass-border); transition: 0.3s; color: var(--text-main);
     }
-    .quiz-pill:hover { background: rgba(59, 130, 246, 0.2); border-color: var(--primary); }
+    .quiz-pill:hover { background: rgba(59, 130, 246, 0.2); border-color: var(--primary); transform: translateY(-2px); }
 
-    .btn-danger { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
-    .btn-danger:hover { background: #dc2626; }
-    .btn-primary { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; }
+    /* الأزرار العامة */
+    .btn-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem; transition: 0.3s; font-weight: bold; }
+    .btn-danger:hover { background: var(--danger); color: white; }
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: 0.3s; }
+    .btn-primary:hover { background: var(--primary-hover); }
 
+    /* النافذة المنبثقة (Modal) لتصحيح الامتحان */
     .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 1rem; }
     .modal-overlay.active { display: flex; }
-    .modal-card { background: #1e293b; border: 1px solid var(--glass-border); border-radius: 16px; width: 100%; max-width: 750px; max-height: 90vh; display: flex; flex-direction: column; }
-    .modal-header { padding: 1.25rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
-    .modal-body { padding: 1.25rem; overflow-y: auto; flex: 1; }
-    .modal-footer { padding: 1.25rem; border-top: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; }
-    .glass-card { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 12px; }
-    .form-control { width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); margin-top: 4px; }
+    .modal-card { background: var(--bg-gradient); border: 1px solid var(--glass-border); border-radius: 16px; width: 100%; max-width: 800px; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); border-radius: 16px 16px 0 0; }
+    .modal-body { padding: 1.5rem; overflow-y: auto; flex: 1; }
+    .modal-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--glass-border); display: flex; justify-content: flex-end; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); border-radius: 0 0 16px 16px; }
+    
+    /* عناصر داخل النافذة */
+    .glass-card { background: var(--card-bg); border: 1px solid var(--glass-border); border-radius: 12px; margin-bottom: 1rem; }
+    .form-control { width: 100%; padding: 10px 14px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-main); margin-top: 8px; font-size: 1rem; outline: none; }
+    .form-control:focus { border-color: var(--primary); }
 
+    /* الإشعارات (Toasts) */
     #toastContainer { position: fixed; bottom: 20px; left: 20px; z-index: 2000; display: flex; flex-direction: column; gap: 10px; }
-    .toast { background: #1e293b; color: #fff; padding: 12px 20px; border-radius: 10px; border-right: 4px solid var(--success); display: flex; align-items: center; gap: 10px; }
+    .toast { background: var(--glass-bg); backdrop-filter: blur(10px); color: var(--text-main); padding: 12px 20px; border-radius: 10px; border-right: 4px solid var(--success); border-left: 1px solid var(--glass-border); border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); animation: slideIn 0.3s ease-out; }
     .toast.error { border-right-color: var(--danger); }
+    
+    @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
   </style>
 </head>
 <body>
 
   <div class="container">
+    <!-- الهيدر -->
     <header class="admin-header">
       <div class="admin-title">
-        <i class="fa-solid fa-graduation-cap"></i>
-        <span>لوحة التحكم - سجل الامتحانات</span>
+        <i class="fa-solid fa-user-shield"></i>
+        <span>لوحة تحكم الإدارة</span>
       </div>
       <button class="theme-btn" id="themeToggleBtn">
         <i class="fa-solid fa-moon"></i>
-        <span>الوضع</span>
+        <span>تبديل الوضع</span>
       </button>
     </header>
 
+    <!-- الإحصائيات -->
     <section class="stats-grid">
       <div class="stat-card">
         <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
         <div class="stat-info">
-          <h4>إجمالي المستخدمين</h4>
+          <h4>إجمالي المسجلين</h4>
           <span id="statTotalUsers">0</span>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon" style="color: var(--success); background: rgba(16, 185, 129, 0.15);"><i class="fa-solid fa-circle-check"></i></div>
-        <div class="stat-info">
-          <h4>المكتملين</h4>
-          <span id="statSubmitted">0</span>
         </div>
       </div>
     </section>
 
+    <!-- شريط البحث -->
     <div class="controls-bar">
       <div class="search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
@@ -131,6 +146,7 @@
       </div>
     </div>
 
+    <!-- جدول المستخدمين -->
     <div class="table-container">
       <table>
         <thead>
@@ -138,48 +154,64 @@
             <th>الصورة</th>
             <th>الاسم</th>
             <th>الهاتف / واتساب</th>
-            <th>سجل الامتحانات (عرض التفاصيل)</th>
-            <th>إجراءات الإدارة</th>
+            <th>سجل الامتحانات (اضغط للتصحيح)</th>
+            <th>إجراءات خطرة</th>
           </tr>
         </thead>
         <tbody id="usersTableBody">
-          <tr><td colspan="5" style="text-align: center;">جاري جلب البيانات...</td></tr>
+          <tr><td colspan="5" style="text-align: center; padding: 2rem;">جاري جلب البيانات من السيرفر...</td></tr>
         </tbody>
       </table>
     </div>
   </div>
 
-  <!-- Modal معاينة نتائج الامتحان -->
+  <!-- النافذة المنبثقة (Modal) لمعاينة وتصحيح الامتحان -->
   <div class="modal-overlay" id="gradingModal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 id="modalUserNameTitle">تفاصيل الامتحان</h3>
-        <button id="closeGradingModalBtn" style="background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer;">
+        <h3 id="modalUserNameTitle" style="color: var(--primary);">تفاصيل الامتحان</h3>
+        <button id="closeGradingModalBtn" style="background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer; transition: 0.3s;">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
       
       <div class="modal-body">
+        <!-- سيتم حقن أسئلة وإجابات الامتحان هنا عبر الجافاسكريبت -->
         <div id="modalExamContent"></div>
 
-        <div class="glass-card" style="padding: 1rem; margin-top: 1rem;">
-          <label style="font-weight: 700; color: var(--primary);">رسالة مخصصة للعميل:</label>
-          <input type="text" id="adminMessageInput" class="form-control" placeholder="أداء رائع يا بطل!">
+        <!-- رسالة الإدارة للعميل -->
+        <div class="glass-card" style="padding: 1.5rem; margin-top: 1rem; border-color: var(--primary);">
+          <label style="font-weight: 700; color: var(--primary); font-size: 1.1rem;"><i class="fa-solid fa-comment-dots"></i> رسالة مخصصة للعميل (تظهر له في النتيجة):</label>
+          <input type="text" id="adminMessageInput" class="form-control" placeholder="مثال: أداء رائع يا بطل! استمر..">
         </div>
       </div>
 
       <div class="modal-footer">
-        <button id="togglePublishResultBtn" class="btn-primary" style="background: var(--accent);">
-          <i class="fa-solid fa-eye"></i> إظهار/إخفاء النتيجة
-        </button>
         <button id="saveGradingBtn" class="btn-primary">
-          <i class="fa-solid fa-floppy-disk"></i> حفظ التعديلات
+          <i class="fa-solid fa-floppy-disk"></i> حفظ الدرجات والتعديلات
         </button>
       </div>
     </div>
   </div>
 
+  <!-- حاوية الإشعارات -->
   <div id="toastContainer"></div>
+
+  <!-- ربط ملف الجافاسكريبت -->
   <script type="module" src="./admin.js"></script>
+
+  <!-- كود بسيط لتشغيل زر الوضع الليلي/النهاري -->
+  <script>
+    const themeBtn = document.getElementById('themeToggleBtn');
+    themeBtn.addEventListener('click', () => {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', newTheme);
+      themeBtn.innerHTML = newTheme === 'dark' 
+        ? '<i class="fa-solid fa-moon"></i><span>تبديل الوضع</span>' 
+        : '<i class="fa-solid fa-sun"></i><span>تبديل الوضع</span>';
+    });
+  </script>
 </body>
 </html>
