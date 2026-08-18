@@ -1,5 +1,5 @@
 // admin.js
-import { db, ref, onValue, update } from "./firebase-config.js";
+import { db, ref, onValue, update, remove } from "./firebase-config.js";
 
 const adminAnswersLookup = {
   q1: "فرناندو توريس",
@@ -7,7 +7,7 @@ const adminAnswersLookup = {
   q3: "بايرن ميونخ",
   q4: "5",
   q5: "2003",
-  q6: "لاعب كرة قدم (فرناندو توريس / ديفيد فيا) - خاض تجارب متعددة"
+  q6: "لاعب كرة قدم - خاض تجارب متعددة"
 };
 
 const questionsList = [
@@ -21,16 +21,7 @@ const questionsList = [
 
 let allUsersCache = {};
 let activeInspectedUserId = null;
-
-// تبديل الثيم بشكل آمن
-const themeBtn = document.getElementById('themeToggleBtn');
-if (themeBtn) {
-  themeBtn.addEventListener('click', () => {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', newTheme);
-  });
-}
+let activeInspectedQuizId = null;
 
 function showToast(message, type = 'success') {
   const toastContainer = document.getElementById('toastContainer');
@@ -42,19 +33,15 @@ function showToast(message, type = 'success') {
   setTimeout(() => toast.remove(), 4000);
 }
 
-// قراءة البيانات من Firebase
+// قراءة بيانات المستخدمين من Firebase
 onValue(ref(db, 'users'), (snapshot) => {
   const tbody = document.getElementById('usersTableBody');
   if (!snapshot.exists()) {
-    if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align: center;">لا يوجد مستخدمون حتى الآن في قاعدة البيانات.</td></tr>`;
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">لا يوجد مستخدمون حالياً.</td></tr>`;
     return;
   }
-
   allUsersCache = snapshot.val() || {};
   renderAdminDashboard();
-}, (error) => {
-  console.error("Firebase Read Error:", error);
-  showToast("فشل جلب البيانات من Firebase. تأكد من قواعد الأمان (Rules).", "error");
 });
 
 function renderAdminDashboard() {
@@ -62,64 +49,47 @@ function renderAdminDashboard() {
   const searchInput = document.getElementById('adminSearchInput');
   const searchKeyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-  // تحديث الإحصائيات مع الحماية من غياب العناصر
-  const elTotal = document.getElementById('statTotalUsers');
-  const elStarted = document.getElementById('statStarted');
-  const elSubmitted = document.getElementById('statSubmitted');
-  const elBlocked = document.getElementById('statBlocked');
-  const elReviewed = document.getElementById('statReviewed');
+  document.getElementById('statTotalUsers').textContent = usersArray.length;
 
-  if (elTotal) elTotal.textContent = usersArray.length;
-  if (elStarted) elStarted.textContent = usersArray.filter(u => u?.examStatus === 'in_progress' || u?.examStatus === 'submitted').length;
-  if (elSubmitted) elSubmitted.textContent = usersArray.filter(u => u?.examStatus === 'submitted').length;
-  if (elBlocked) elBlocked.textContent = usersArray.filter(u => u?.isBlocked).length;
-  if (elReviewed) elReviewed.textContent = usersArray.filter(u => u?.resultPublished).length;
+  const tbody = document.getElementById('usersTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
 
-  // تصفية المستخدمين
   const filtered = usersArray.filter(u => {
     const userName = (u?.name || '').toLowerCase();
     const userPhone = (u?.phone || '').toString();
     return userName.includes(searchKeyword) || userPhone.includes(searchKeyword);
   });
 
-  const tbody = document.getElementById('usersTableBody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-
-  if (filtered.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center;">لا توجد نتائج تطابق البحث.</td></tr>`;
-    return;
-  }
-
   filtered.forEach(user => {
     const tr = document.createElement('tr');
 
-    const statusBadge = user?.examStatus === 'submitted' 
-      ? '<span class="badge badge-success">تم التسليم</span>' 
-      : '<span class="badge badge-warning">قيد الإجراء</span>';
+    const rawPhone = (user?.phone || '').toString().trim();
+    let cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+    if (cleanPhone.startsWith('01') && cleanPhone.length === 11) cleanPhone = '20' + cleanPhone.substring(1);
 
-    const publishBadge = user?.resultPublished 
-      ? '<span class="badge badge-success">منشورة</span>' 
-      : '<span class="badge badge-danger">غير منشورة</span>';
-
-    const formattedDate = user?.startedAt 
-      ? new Date(user.startedAt).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) 
-      : '-';
-
+    const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent("اهلا نتيجتك ظهرت في الموقع الان")}` : '#';
     const photoUrl = user?.photo || 'https://via.placeholder.com/40';
     const uId = user?.userId || '';
 
-    // --- تجهيز رابط الواتساب الديناميكي ---
-    const rawPhone = (user?.phone || '').toString().trim();
-    let cleanPhone = rawPhone.replace(/[^0-9]/g, '');
+    // إعداد قائمة الامتحانات التي اختبرها العميل
+    const quizzes = user?.quizzes || {};
+    let quizPills = '';
 
-    // إضافة كود مصر (20) تلقائياً إذا كان الرقم مصري يبدأ بـ 01
-    if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
-      cleanPhone = '20' + cleanPhone.substring(1);
+    const quizKeys = Object.keys(quizzes);
+    if (quizKeys.length === 0) {
+      quizPills = '<span style="color: var(--text-muted); font-size: 0.85rem;">لم يؤدِ أي امتحان بعد</span>';
+    } else {
+      quizKeys.forEach(qKey => {
+        const qData = quizzes[qKey];
+        const title = qKey === 'quiz1' ? 'الامتحان الأول' : qKey === 'quiz2' ? 'الامتحان الثاني' : qKey;
+        quizPills += `
+          <button class="quiz-pill inspect-quiz-btn" data-uid="${uId}" data-qid="${qKey}">
+            <i class="fa-solid fa-file-pen"></i> ${title}: <strong>${qData.score || 0}/12</strong>
+          </button>
+        `;
+      });
     }
-
-    const defaultMsg = encodeURIComponent("اهلا نتيجتك ظهرت في الموقع الان");
-    const waLink = cleanPhone ? `https://wa.me/${cleanPhone}?text=${defaultMsg}` : '#';
 
     tr.innerHTML = `
       <td><img src="${photoUrl}" class="table-avatar" alt="الصورة"></td>
@@ -127,106 +97,61 @@ function renderAdminDashboard() {
       <td>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span>${rawPhone || '-'}</span>
-          ${cleanPhone ? `
-            <a href="${waLink}" target="_blank" title="إرسال النتيجة عبر واتساب" style="
-              color: #25D366; 
-              background: rgba(37, 211, 102, 0.15); 
-              padding: 4px 8px; 
-              border-radius: 6px; 
-              text-decoration: none; 
-              font-size: 0.85rem; 
-              display: inline-flex; 
-              align-items: center; 
-              gap: 4px;
-              font-weight: 600;
-              transition: all 0.2s ease;
-            ">
-              <i class="fa-brands fa-whatsapp" style="font-size: 1rem;"></i> واتساب
-            </a>
-          ` : ''}
+          ${cleanPhone ? `<a href="${waLink}" target="_blank" style="color: #25D366; text-decoration: none;"><i class="fa-brands fa-whatsapp"></i></a>` : ''}
         </div>
       </td>
-      <td>${formattedDate}</td>
-      <td>${statusBadge}</td>
-      <td><strong style="color: var(--primary);">${user?.score || 0} / 12</strong></td>
-      <td>${publishBadge}</td>
+      <td>${quizPills}</td>
       <td>
-        <div class="action-btns">
-          <button class="btn-primary btn-sm inspect-btn" data-id="${uId}"><i class="fa-solid fa-folder-open"></i> فتح الامتحان</button>
-          <button class="${user?.isBlocked ? 'btn-secondary' : 'btn-primary'} btn-sm block-btn" data-id="${uId}" style="${user?.isBlocked ? '' : 'background: var(--danger);'}">
-            ${user?.isBlocked ? 'إلغاء الحظر' : 'حظر'}
-          </button>
-        </div>
+        <button class="btn-danger delete-user-btn" data-id="${uId}">
+          <i class="fa-solid fa-trash-can"></i> حذف المستخدم كاملاً
+        </button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 
-  document.querySelectorAll('.inspect-btn').forEach(btn => {
-    btn.onclick = () => openGradingModal(btn.getAttribute('data-id'));
+  // تفعيل أزرار العرض والحذف
+  document.querySelectorAll('.inspect-quiz-btn').forEach(btn => {
+    btn.onclick = () => openGradingModal(btn.getAttribute('data-uid'), btn.getAttribute('data-qid'));
   });
 
-  document.querySelectorAll('.block-btn').forEach(btn => {
-    btn.onclick = () => toggleBlockUser(btn.getAttribute('data-id'));
+  document.querySelectorAll('.delete-user-btn').forEach(btn => {
+    btn.onclick = () => deleteUserCompletely(btn.getAttribute('data-id'));
   });
 }
 
-const searchInputEl = document.getElementById('adminSearchInput');
-if (searchInputEl) {
-  searchInputEl.addEventListener('input', renderAdminDashboard);
-}
-
-async function toggleBlockUser(userId) {
+// دالة حذف المستخدم كاملاً
+async function deleteUserCompletely(userId) {
   if (!userId) return;
-  const user = allUsersCache[userId];
-  if (!user) return;
-
-  const updatedBlockStatus = !user.isBlocked;
-  await update(ref(db, `users/${userId}`), { isBlocked: updatedBlockStatus });
-  showToast(`تم ${updatedBlockStatus ? 'حظر' : 'إلغاء حظر'} المستخدم بنجاح.`);
+  const confirmDelete = confirm("هل أنت تأكد من حذف هذا المستخدم كاملاً من الموقع؟ سيمكنه الدخول كأنه شخص جديد تماماً!");
+  if (confirmDelete) {
+    await remove(ref(db, `users/${userId}`));
+    showToast("تم حذف المستخدم بنجاح!");
+  }
 }
 
-const gradingModal = document.getElementById('gradingModal');
-const closeModalBtn = document.getElementById('closeGradingModalBtn');
-if (closeModalBtn && gradingModal) {
-  closeModalBtn.onclick = () => gradingModal.classList.remove('active');
-}
-
-function openGradingModal(userId) {
+// عرض وتصحيح امتحان معين للمستخدم
+function openGradingModal(userId, quizId) {
   activeInspectedUserId = userId;
-  const user = allUsersCache[userId];
-  if (!user || !gradingModal) return;
+  activeInspectedQuizId = quizId;
 
+  const user = allUsersCache[userId];
+  if (!user || !user.quizzes || !user.quizzes[quizId]) return;
+
+  const quizData = user.quizzes[quizId];
+  const gradingModal = document.getElementById('gradingModal');
   const nameTitle = document.getElementById('modalUserNameTitle');
   const msgInput = document.getElementById('adminMessageInput');
 
-  // إعداد رابط الواتساب داخل النافذة المنبثقة
-  let modalPhone = (user.phone || '').toString().trim().replace(/[^0-9]/g, '');
-  if (modalPhone.startsWith('01') && modalPhone.length === 11) {
-    modalPhone = '20' + modalPhone.substring(1);
-  }
-  const waModalLink = `https://wa.me/${modalPhone}?text=${encodeURIComponent("اهلا نتيجتك ظهرت في الموقع الان")}`;
-
-  if (nameTitle) {
-    nameTitle.innerHTML = `
-      مراجعة امتحان: ${user.name || ''} (${user.phone || ''}) 
-      ${modalPhone ? `
-        <a href="${waModalLink}" target="_blank" style="color: #25D366; text-decoration: none; margin-right: 10px; font-size: 0.9rem;">
-          <i class="fa-brands fa-whatsapp"></i> إرسال النتيجة
-        </a>
-      ` : ''}
-    `;
-  }
-
-  if (msgInput) msgInput.value = user.adminMessage || "";
+  if (nameTitle) nameTitle.textContent = `عرض: ${user.name} - (${quizId === 'quiz1' ? 'الامتحان الأول' : 'الامتحان الثاني'})`;
+  if (msgInput) msgInput.value = quizData.adminMessage || "";
 
   const container = document.getElementById('modalExamContent');
-  if (!container) return;
   container.innerHTML = '';
 
   questionsList.forEach((q, idx) => {
-    const userAns = user.answers ? user.answers[q.id] : 'لا يوجد إجابة';
-    const qScore = user.grading ? (user.grading[q.id] || 0) : 0;
+    const userAns = quizData.answers ? quizData.answers[q.id] : 'لا يوجد إجابة';
+    const qScore = quizData.grading ? (quizData.grading[q.id] || 0) : 0;
 
     const div = document.createElement('div');
     div.className = 'glass-card';
@@ -234,85 +159,44 @@ function openGradingModal(userId) {
     div.style.marginBottom = '1rem';
 
     if (q.type === 'mcq') {
-      const isCorrect = qScore === 2;
       div.innerHTML = `
         <strong>س${idx + 1}: ${q.text}</strong>
-        ${q.img ? `<br><img src="${q.img}" style="max-height: 100px; border-radius: 8px; margin: 0.5rem 0;">` : ''}
-        <p>إجابة العميل: <span style="font-weight: 700; color: ${isCorrect ? '#34d399' : '#f87171'};">${userAns}</span></p>
-        <p>الإجابة الصحيحة النموذجية: <span style="font-weight: 700; color: #34d399;">${adminAnswersLookup[q.id]}</span></p>
+        <p>إجابة العميل: <strong>${userAns}</strong></p>
+        <p>الإجابة الصحيحة: <span style="color: #34d399;">${adminAnswersLookup[q.id]}</span></p>
         <small>الدرجة: ${qScore} / 2</small>
       `;
     } else {
-      const currentNote = user.notes && user.notes.q6 ? user.notes.q6 : "";
       div.innerHTML = `
-        <strong style="color: var(--accent);">س${idx + 1} (مقالي): ${q.text}</strong>
-        ${q.img ? `<br><img src="${q.img}" style="max-height: 120px; border-radius: 8px; margin: 0.5rem 0;">` : ''}
-        <div style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0;">
-          <strong>إجابة العميل:</strong>
-          <p style="white-space: pre-wrap; color: var(--text-main); font-weight: 600;">${userAns}</p>
-        </div>
-        <div style="display: flex; gap: 1rem; align-items: center; margin-top: 0.75rem;">
-          <label>درجة السؤال (0 إلى 2):</label>
-          <input type="number" id="q6ScoreInput" class="form-control" style="width: 80px;" min="0" max="2" value="${qScore}">
-        </div>
-        <div style="margin-top: 0.5rem;">
-          <label>ملاحظة المصحح:</label>
-          <input type="text" id="q6NoteInput" class="form-control" placeholder="ملاحظة حول الإجابة..." value="${currentNote}">
-        </div>
+        <strong>س${idx + 1} (مقالي): ${q.text}</strong>
+        <p>إجابة العميل: <strong>${userAns}</strong></p>
+        <label>درجة السؤال (0 إلى 2):</label>
+        <input type="number" id="q6ScoreInput" class="form-control" style="width: 80px;" min="0" max="2" value="${qScore}">
       `;
     }
-
     container.appendChild(div);
   });
 
   gradingModal.classList.add('active');
 }
 
-// حفظ التصحيح
-const saveBtn = document.getElementById('saveGradingBtn');
-if (saveBtn) {
-  saveBtn.onclick = async () => {
-    if (!activeInspectedUserId) return;
+document.getElementById('closeGradingModalBtn').onclick = () => {
+  document.getElementById('gradingModal').classList.remove('active');
+};
 
-    const user = allUsersCache[activeInspectedUserId];
-    const scoreInput = document.getElementById('q6ScoreInput');
-    const noteInput = document.getElementById('q6NoteInput');
-    const msgInput = document.getElementById('adminMessageInput');
+// حفظ تصحيح الامتحان المحدد
+document.getElementById('saveGradingBtn').onclick = async () => {
+  if (!activeInspectedUserId || !activeInspectedQuizId) return;
 
-    const q6Score = scoreInput ? parseInt(scoreInput.value) || 0 : 0;
-    const q6Note = noteInput ? noteInput.value.trim() : '';
-    const adminMsg = msgInput ? msgInput.value.trim() : '';
+  const scoreInput = document.getElementById('q6ScoreInput');
+  const msgInput = document.getElementById('adminMessageInput');
+  const q6Score = scoreInput ? parseInt(scoreInput.value) || 0 : 0;
+  const adminMsg = msgInput ? msgInput.value.trim() : '';
 
-    let currentGrading = user.grading || { q1: 0, q2: 0, q3: 0, q4: 0, q5: 0, q6: 0 };
-    currentGrading.q6 = q6Score;
+  const quizRef = `users/${activeInspectedUserId}/quizzes/${activeInspectedQuizId}`;
 
-    let totalScore = 0;
-    Object.values(currentGrading).forEach(s => totalScore += Number(s));
+  await update(ref(db, `${quizRef}/grading`), { q6: q6Score });
+  await update(ref(db, quizRef), { adminMessage: adminMsg });
 
-    const updates = {
-      "grading/q6": q6Score,
-      "notes/q6": q6Note,
-      "score": totalScore,
-      "adminMessage": adminMsg
-    };
-
-    await update(ref(db, `users/${activeInspectedUserId}`), updates);
-    showToast('تم حفظ التصحيح بنجاح.');
-    if (gradingModal) gradingModal.classList.remove('active');
-  };
-}
-
-// إظهار/إخفاء النتيجة
-const publishBtn = document.getElementById('togglePublishResultBtn');
-if (publishBtn) {
-  publishBtn.onclick = async () => {
-    if (!activeInspectedUserId) return;
-
-    const user = allUsersCache[activeInspectedUserId];
-    const newPublishStatus = !user.resultPublished;
-
-    await update(ref(db, `users/${activeInspectedUserId}`), { resultPublished: newPublishStatus });
-    showToast(`تم ${newPublishStatus ? 'إظهار' : 'إخفاء'} النتيجة بنجاح.`);
-    if (gradingModal) gradingModal.classList.remove('active');
-  };
-}
+  showToast('تم حفظ التعديلات للامتحان.');
+  document.getElementById('gradingModal').classList.remove('active');
+};
