@@ -1,133 +1,215 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark">
+<html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Football Quiz | الامتحان</title>
-  <link rel="stylesheet" href="style.css">
+  <title>الامتحان - اختبر معلوماتك</title>
+  
+  <!-- FontAwesome للأيقونات -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 650px;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+    }
+
+    .quiz-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+    }
+
+    .q-img {
+      width: 100%;
+      max-height: 250px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+    }
+
+    .question-text {
+      font-size: 1.1rem;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+
+    .options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .option-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      text-align: right;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 1rem;
+    }
+
+    .option-btn:hover {
+      background: rgba(37, 99, 235, 0.2);
+      border-color: var(--primary);
+    }
+
+    .option-btn.selected {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .textarea-control {
+      width: 100%;
+      height: 120px;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      padding: 0.75rem;
+      resize: vertical;
+      font-size: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.85rem;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-submit:hover {
+      opacity: 0.9;
+    }
+
+    #loadingScreen {
+      text-align: center;
+      padding: 3rem 1rem;
+    }
+
+    .spinner {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border-left-color: var(--primary);
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+
+    .toast {
+      background: #10b981;
+      color: white;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .toast.error {
+      background: #ef4444;
+    }
+  </style>
 </head>
 <body>
 
-  <!-- Navbar Header -->
-  <header class="navbar">
-    <div class="brand">
-      <i class="fa-solid fa-football brand-icon"></i>
-      <span>Football Quiz</span>
+  <div class="container">
+    <!-- شاشة التحميل -->
+    <div id="loadingScreen">
+      <div class="spinner"></div>
+      <p style="color: var(--text-muted);">جاري تحميل البيانات...</p>
     </div>
 
-    <!-- Active User Display -->
-    <div class="user-badge" id="navUserBadge" style="display: none;">
-      <img id="navUserPhoto" src="" alt="المستخدم">
-      <div>
-        <div id="navUserName" style="font-weight: 700; font-size: 0.95rem;"></div>
-        <small style="color: var(--text-muted);" id="navUserPhone"></small>
-      </div>
-    </div>
-
-    <button id="themeToggleBtn" class="theme-toggle">
-      <i class="fa-solid fa-moon"></i>
-      <span>الوضع الداكن</span>
-    </button>
-  </header>
-
-  <!-- Main View Container -->
-  <main class="main-container">
-    <div class="form-wrapper glass-card" style="max-width: 720px;">
-
-      <!-- Loader Screen -->
-      <div id="loadingScreen" style="text-align: center; padding: 3rem;">
-        <i class="fa-solid fa-spinner fa-spin fa-3x" style="color: var(--primary);"></i>
-        <p style="margin-top: 1rem;">جاري تحميل البيانات...</p>
+    <!-- كارت عرض الأسئلة -->
+    <div id="quizContent" style="display: none;">
+      <div class="header">
+        <span class="quiz-title" id="quizTitle">الامتحان الأول</span>
+        <span style="color: var(--text-muted); font-size: 0.9rem;" id="questionProgress">السؤال 1 من 6</span>
       </div>
 
-      <!-- Blocked Account Screen -->
-      <div id="blockedScreen" class="blocked-overlay-screen" style="display: none;">
-        <i class="fa-solid fa-user-slash"></i>
-        <h2>تم حظر هذا الحساب</h2>
-        <p style="color: var(--text-muted); margin-top: 0.5rem;">عذرًا، تم حظر حسابك من إجراء الامتحان بواسطة إداريي النظام.</p>
+      <div id="questionContainer">
+        <!-- يتم هنا استبدال الأسئلة عبر Javascript -->
       </div>
 
-      <!-- Active Exam Screen -->
-      <div id="examContainer" style="display: none;">
-        <!-- Exam Meta Header -->
-        <div class="quiz-header">
-          <div style="font-weight: 700; color: var(--primary);" id="questionCounter">السؤال 1 من 6</div>
-          <div class="timer-box" id="timerBox">
-            <i class="fa-regular fa-clock"></i>
-            <span id="timerDisplay">25:00</span>
-          </div>
-        </div>
-
-        <!-- Progress Bar -->
-        <div class="progress-bar-container">
-          <div class="progress-bar-fill" id="progressBarFill"></div>
-        </div>
-
-        <!-- Question Body Card -->
-        <div class="question-card">
-          <div id="questionImgWrapper" class="question-img-wrapper" style="display: none;">
-            <img id="questionImg" src="" alt="صورة السؤال" class="question-img">
-          </div>
-          <h2 id="questionText" class="question-title"></h2>
-
-          <!-- Dynamic Options Grid for Multiple Choice -->
-          <div id="optionsGrid" class="options-grid" style="display: none;"></div>
-
-          <!-- Textarea for Essay Q6 -->
-          <div id="essayContainer" style="display: none;">
-            <textarea id="essayAnswer" class="essay-textarea" placeholder="اكتب إجابتك هنا بالتفصيل..."></textarea>
-          </div>
-        </div>
-
-        <!-- Navigation Action Buttons -->
-        <div class="quiz-nav-btns">
-          <button id="prevBtn" class="btn-secondary" disabled><i class="fa-solid fa-arrow-right"></i> السابق</button>
-          <button id="nextBtn" class="btn-primary" style="width: auto; padding: 0.75rem 2rem;">التالي <i class="fa-solid fa-arrow-left"></i></button>
-        </div>
-      </div>
-
-      <!-- Submitted / Waiting / Result Screen -->
-      <div id="resultContainer" style="display: none; text-align: center;">
-        <div id="pendingReviewBox">
-          <i class="fa-solid fa-hourglass-half fa-3x" style="color: var(--accent); margin-bottom: 1rem;"></i>
-          <h2>تم تسليم الامتحان بنجاح!</h2>
-          <p style="color: var(--text-muted); margin-top: 0.5rem;">سيتم مراجعة إجابتك المقالية وتدقيقها من قِبل إدارة الموقع، وستظهر النتيجة النهائية هنا فور نشرها.</p>
-        </div>
-
-        <!-- Published Result Card -->
-        <div id="publishedResultBox" style="display: none; text-align: right;">
-          <div style="text-align: center; margin-bottom: 2rem;">
-            <i class="fa-solid fa-trophy fa-3x" style="color: var(--accent);"></i>
-            <h2 style="margin-top: 0.5rem;">نتيجة الاختبار النهائي</h2>
-            <div style="font-size: 2.5rem; font-weight: 900; color: var(--primary); margin: 0.5rem 0;" id="finalScoreText">10 / 12</div>
-            <p id="adminMessageBanner" style="background: rgba(16,185,129,0.1); border: 1px solid var(--primary); padding: 0.75rem; border-radius: 8px; color: var(--primary); font-weight: 600; display: none;"></p>
-          </div>
-
-          <hr style="border-color: var(--glass-border); margin-bottom: 1.5rem;">
-          <h3 style="margin-bottom: 1rem; color: var(--primary);">تفاصيل الأسئلة والإجابات:</h3>
-          <div id="questionsReviewList"></div>
-        </div>
-      </div>
-
-    </div>
-  </main>
-
-  <!-- Submit Confirmation Modal -->
-  <div id="confirmModal" class="modal-overlay">
-    <div class="modal-box">
-      <i class="fa-solid fa-circle-question fa-3x" style="color: var(--accent); margin-bottom: 1rem;"></i>
-      <h3>تأكيد تسليم الامتحان</h3>
-      <p style="color: var(--text-muted); margin-top: 0.5rem;">هل أنت متأكد من تسليم الامتحان الآن؟ لن تتمكن من تعديل أي إجابات بعد التأكيد.</p>
-      <div class="modal-actions">
-        <button id="cancelSubmitBtn" class="btn-secondary" style="flex: 1;">إلغاء</button>
-        <button id="confirmSubmitBtn" class="btn-primary" style="flex: 1;">تأكيد التسليم</button>
-      </div>
+      <button class="btn-submit" id="nextQuestionBtn">
+        <span>السؤال التالي</span>
+        <i class="fa-solid fa-arrow-left"></i>
+      </button>
     </div>
   </div>
 
-  <div id="toastContainer" class="toast-container"></div>
+  <div class="toast-container" id="toastContainer"></div>
 
-  <script type="module" src="quiz.js"></script>
+  <!-- الربط بملف السكربت الخاص بالاختبار -->
+  <script type="module" src="./quiz.js"></script>
 </body>
 </html>
