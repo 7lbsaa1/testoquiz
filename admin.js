@@ -49,7 +49,8 @@ function renderAdminDashboard() {
   const searchInput = document.getElementById('adminSearchInput');
   const searchKeyword = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
-  document.getElementById('statTotalUsers').textContent = usersArray.length;
+  const statUsersEl = document.getElementById('statTotalUsers');
+  if (statUsersEl) statUsersEl.textContent = usersArray.length;
 
   const tbody = document.getElementById('usersTableBody');
   if (!tbody) return;
@@ -72,17 +73,29 @@ function renderAdminDashboard() {
     const photoUrl = user?.photo || 'https://via.placeholder.com/40';
     const uId = user?.userId || '';
 
-    // إعداد قائمة الامتحانات التي اختبرها العميل
-    const quizzes = user?.quizzes || {};
-    let quizPills = '';
+    // إعداد قائمة الامتحانات التي اختبرها العميل (دعم الهيكلتين القديمة والجديدة)
+    let quizzes = user?.quizzes ? { ...user.quizzes } : {};
 
+    // فحص ما إذا كانت إجابات الامتحان الأول محفوظة مباشرة على جذر المستخدم
+    if (!quizzes.quiz1 && (user?.answers || user?.examStatus || user?.score !== undefined)) {
+      quizzes.quiz1 = {
+        answers: user.answers || {},
+        score: user.score || 0,
+        examStatus: user.examStatus || '',
+        grading: user.grading || {},
+        adminMessage: user.adminMessage || ''
+      };
+    }
+
+    let quizPills = '';
     const quizKeys = Object.keys(quizzes);
+
     if (quizKeys.length === 0) {
       quizPills = '<span style="color: var(--text-muted); font-size: 0.85rem;">لم يؤدِ أي امتحان بعد</span>';
     } else {
       quizKeys.forEach(qKey => {
         const qData = quizzes[qKey];
-        const title = qKey === 'quiz1' ? 'الامتحان الأول' : qKey === 'quiz2' ? 'الامتحان الثاني' : qKey;
+        const title = (qKey === 'quiz1' || qKey === 'exam1') ? 'الامتحان الأول' : (qKey === 'quiz2' || qKey === 'exam2') ? 'الامتحان الثاني' : qKey;
         quizPills += `
           <button class="quiz-pill inspect-quiz-btn" data-uid="${uId}" data-qid="${qKey}">
             <i class="fa-solid fa-file-pen"></i> ${title}: <strong>${qData.score || 0}/12</strong>
@@ -136,9 +149,22 @@ function openGradingModal(userId, quizId) {
   activeInspectedQuizId = quizId;
 
   const user = allUsersCache[userId];
-  if (!user || !user.quizzes || !user.quizzes[quizId]) return;
+  if (!user) return;
 
-  const quizData = user.quizzes[quizId];
+  // جلب البيانات سواء كانت من كائن quizzes أو من جذر حساب المستخدم مباشرة
+  let quizData = (user.quizzes && user.quizzes[quizId]) ? user.quizzes[quizId] : null;
+
+  if (!quizData && quizId === 'quiz1') {
+    quizData = {
+      answers: user.answers || {},
+      score: user.score || 0,
+      grading: user.grading || {},
+      adminMessage: user.adminMessage || ''
+    };
+  }
+
+  if (!quizData) return;
+
   const gradingModal = document.getElementById('gradingModal');
   const nameTitle = document.getElementById('modalUserNameTitle');
   const msgInput = document.getElementById('adminMessageInput');
@@ -147,56 +173,75 @@ function openGradingModal(userId, quizId) {
   if (msgInput) msgInput.value = quizData.adminMessage || "";
 
   const container = document.getElementById('modalExamContent');
-  container.innerHTML = '';
+  if (container) {
+    container.innerHTML = '';
 
-  questionsList.forEach((q, idx) => {
-    const userAns = quizData.answers ? quizData.answers[q.id] : 'لا يوجد إجابة';
-    const qScore = quizData.grading ? (quizData.grading[q.id] || 0) : 0;
+    questionsList.forEach((q, idx) => {
+      const userAns = quizData.answers ? quizData.answers[q.id] : 'لا يوجد إجابة';
+      const qScore = quizData.grading ? (quizData.grading[q.id] || 0) : 0;
 
-    const div = document.createElement('div');
-    div.className = 'glass-card';
-    div.style.padding = '1rem';
-    div.style.marginBottom = '1rem';
+      const div = document.createElement('div');
+      div.className = 'glass-card';
+      div.style.padding = '1rem';
+      div.style.marginBottom = '1rem';
 
-    if (q.type === 'mcq') {
-      div.innerHTML = `
-        <strong>س${idx + 1}: ${q.text}</strong>
-        <p>إجابة العميل: <strong>${userAns}</strong></p>
-        <p>الإجابة الصحيحة: <span style="color: #34d399;">${adminAnswersLookup[q.id]}</span></p>
-        <small>الدرجة: ${qScore} / 2</small>
-      `;
-    } else {
-      div.innerHTML = `
-        <strong>س${idx + 1} (مقالي): ${q.text}</strong>
-        <p>إجابة العميل: <strong>${userAns}</strong></p>
-        <label>درجة السؤال (0 إلى 2):</label>
-        <input type="number" id="q6ScoreInput" class="form-control" style="width: 80px;" min="0" max="2" value="${qScore}">
-      `;
-    }
-    container.appendChild(div);
-  });
+      if (q.type === 'mcq') {
+        div.innerHTML = `
+          <strong>س${idx + 1}: ${q.text}</strong>
+          <p>إجابة العميل: <strong>${userAns}</strong></p>
+          <p>الإجابة الصحيحة: <span style="color: #34d399;">${adminAnswersLookup[q.id]}</span></p>
+          <small>الدرجة: ${qScore} / 2</small>
+        `;
+      } else {
+        div.innerHTML = `
+          <strong>س${idx + 1} (مقالي): ${q.text}</strong>
+          <p>إجابة العميل: <strong>${userAns}</strong></p>
+          <label>درجة السؤال (0 إلى 2):</label>
+          <input type="number" id="q6ScoreInput" class="form-control" style="width: 80px;" min="0" max="2" value="${qScore}">
+        `;
+      }
+      container.appendChild(div);
+    });
+  }
 
-  gradingModal.classList.add('active');
+  if (gradingModal) gradingModal.classList.add('active');
 }
 
-document.getElementById('closeGradingModalBtn').onclick = () => {
-  document.getElementById('gradingModal').classList.remove('active');
-};
+const closeBtn = document.getElementById('closeGradingModalBtn');
+if (closeBtn) {
+  closeBtn.onclick = () => {
+    const gradingModal = document.getElementById('gradingModal');
+    if (gradingModal) gradingModal.classList.remove('active');
+  };
+}
 
 // حفظ تصحيح الامتحان المحدد
-document.getElementById('saveGradingBtn').onclick = async () => {
-  if (!activeInspectedUserId || !activeInspectedQuizId) return;
+const saveBtn = document.getElementById('saveGradingBtn');
+if (saveBtn) {
+  saveBtn.onclick = async () => {
+    if (!activeInspectedUserId || !activeInspectedQuizId) return;
 
-  const scoreInput = document.getElementById('q6ScoreInput');
-  const msgInput = document.getElementById('adminMessageInput');
-  const q6Score = scoreInput ? parseInt(scoreInput.value) || 0 : 0;
-  const adminMsg = msgInput ? msgInput.value.trim() : '';
+    const scoreInput = document.getElementById('q6ScoreInput');
+    const msgInput = document.getElementById('adminMessageInput');
+    const q6Score = scoreInput ? parseInt(scoreInput.value) || 0 : 0;
+    const adminMsg = msgInput ? msgInput.value.trim() : '';
 
-  const quizRef = `users/${activeInspectedUserId}/quizzes/${activeInspectedQuizId}`;
+    const user = allUsersCache[activeInspectedUserId];
+    const isLegacyQuiz1 = (!user?.quizzes || !user?.quizzes.quiz1) && activeInspectedQuizId === 'quiz1';
 
-  await update(ref(db, `${quizRef}/grading`), { q6: q6Score });
-  await update(ref(db, quizRef), { adminMessage: adminMsg });
+    if (isLegacyQuiz1) {
+      // حفظ التعديلات في الجذر الرئيسي إذا كان الامتحان محفوظاً بالهيكلة القديمة
+      await update(ref(db, `users/${activeInspectedUserId}/grading`), { q6: q6Score });
+      await update(ref(db, `users/${activeInspectedUserId}`), { adminMessage: adminMsg });
+    } else {
+      // حفظ التعديلات داخل المسار الجديد quizzes/quizId
+      const quizRef = `users/${activeInspectedUserId}/quizzes/${activeInspectedQuizId}`;
+      await update(ref(db, `${quizRef}/grading`), { q6: q6Score });
+      await update(ref(db, quizRef), { adminMessage: adminMsg });
+    }
 
-  showToast('تم حفظ التعديلات للامتحان.');
-  document.getElementById('gradingModal').classList.remove('active');
-};
+    showToast('تم حفظ التعديلات للامتحان.');
+    const gradingModal = document.getElementById('gradingModal');
+    if (gradingModal) gradingModal.classList.remove('active');
+  };
+}
