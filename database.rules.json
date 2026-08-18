@@ -1,9 +1,17 @@
 {
   "rules": {
     "users": {
-      ".read": true,
+      // لا أحد يستطيع رؤية قائمة الطلاب بالكامل إلا الأدمن (المسجل دخول)
+      ".read": "auth != null",
+      
       "$uid": {
-        ".write": "auth != null || (!data.exists() && newData.exists()) || (data.child('examStatus').val() !== 'submitted' && newData.child('examStatus').val() === 'submitted')",
+        // يمكن لأي شخص قراءة بياناته الخاصة إذا كان يعرف الـ UID الخاص به
+        ".read": true,
+        
+        // يمكن إنشاء مستخدم جديد، أو تسليم امتحان، أو للأدمن الصلاحية الكاملة
+        ".write": "(!data.exists() && newData.exists()) || (data.child('examStatus').val() !== 'submitted' && newData.child('examStatus').val() === 'submitted') || auth != null",
+        
+        // --- حماية صارمة: هذه الحقول لا يمكن لأحد تعديلها إطلاقاً سوى الأدمن ---
         "isBlocked": {
           ".write": "auth != null"
         },
@@ -21,8 +29,12 @@
         }
       }
     },
+    
     "exams": {
+      // أي شخص يمكنه قراءة الامتحانات ليتمكن من حلها
       ".read": true,
+      
+      // لا أحد يستطيع إضافة أو حذف أو تعديل الامتحانات إلا الأدمن
       ".write": "auth != null"
     }
   }
